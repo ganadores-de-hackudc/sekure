@@ -57,7 +57,7 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
                 <div className="card text-center">
                     {/* Logo */}
                     <div className="flex justify-center mb-6">
-                        <img src="/sekure-longlogo.svg" alt="Sekure" className="h-80" />
+                        <img src="/sekure-longlogo.svg" alt="Sekure" className="h-25" />
                     </div>
                     <p className="text-gray-400 mb-8">
                         {isSetup
