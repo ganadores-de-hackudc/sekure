@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { lockVault } from '../api';
 import toast from 'react-hot-toast';
 import {
-    Shield, KeyRound, ShieldCheck, Archive,
+    KeyRound, ShieldCheck, Archive,
     Lock, Menu, X,
 } from 'lucide-react';
 
@@ -37,13 +37,7 @@ export default function Layout({ children, onLock }: LayoutProps) {
             {/* Sidebar - Desktop */}
             <aside className="hidden lg:flex flex-col w-72 bg-gray-900/50 border-r border-gray-800 p-6">
                 <div className="flex items-center gap-3 mb-10">
-                    <div className="w-10 h-10 bg-gradient-to-br from-sekure-500 to-sekure-700 rounded-xl flex items-center justify-center">
-                        <Shield className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-white">Sekure</h1>
-                        <p className="text-xs text-gray-500">Gestor de Contraseñas</p>
-                    </div>
+                    <img src="/sekure-longlogo.svg" alt="Sekure" className="h-10" />
                 </div>
 
                 <nav className="flex-1 space-y-2">
@@ -74,10 +68,7 @@ export default function Layout({ children, onLock }: LayoutProps) {
                     <aside className="relative w-72 bg-gray-900 border-r border-gray-800 p-6 z-10 flex flex-col animate-fade-in">
                         <div className="flex items-center justify-between mb-10">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-sekure-500 to-sekure-700 rounded-xl flex items-center justify-center">
-                                    <Shield className="w-6 h-6 text-white" />
-                                </div>
-                                <h1 className="text-xl font-bold">Sekure</h1>
+                                <img src="/sekure-longlogo.svg" alt="Sekure" className="h-10" />
                             </div>
                             <button onClick={() => setSidebarOpen(false)} className="btn-ghost">
                                 <X className="w-5 h-5" />
@@ -116,7 +107,7 @@ export default function Layout({ children, onLock }: LayoutProps) {
                         <Menu className="w-6 h-6" />
                     </button>
                     <div className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-sekure-500" />
+                        <img src="/sekure-logo.svg" alt="Sekure" className="h-6 w-6" />
                         <span className="font-bold">Sekure</span>
                     </div>
                     <button onClick={handleLock} className="btn-ghost text-red-400">

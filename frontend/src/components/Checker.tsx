@@ -11,7 +11,7 @@ import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
 } from 'recharts';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'];
+const COLORS = ['#9b1b2f', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'];
 
 export default function Checker() {
     const [password, setPassword] = useState('');

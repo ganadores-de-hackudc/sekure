@@ -21,7 +21,7 @@ export default function EntropyChart({ data }: EntropyChartProps) {
     }));
 
     const typeColorMap: Record<string, string> = {
-        lowercase: '#10b981',
+        lowercase: '#9b1b2f',
         uppercase: '#3b82f6',
         digit: '#f59e0b',
         symbol: '#ef4444',
@@ -35,8 +35,8 @@ export default function EntropyChart({ data }: EntropyChartProps) {
                     <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                         <defs>
                             <linearGradient id="entropyGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                <stop offset="5%" stopColor="#9b1b2f" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#9b1b2f" stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <XAxis
@@ -68,7 +68,7 @@ export default function EntropyChart({ data }: EntropyChartProps) {
                         <Area
                             type="monotone"
                             dataKey="cumulative"
-                            stroke="#10b981"
+                            stroke="#9b1b2f"
                             strokeWidth={2}
                             fill="url(#entropyGradient)"
                         />

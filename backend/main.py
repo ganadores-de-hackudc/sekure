@@ -328,7 +328,7 @@ def create_tag(data: TagCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(400, "Ya existe una etiqueta con ese nombre.")
 
-    tag = Tag(name=data.name, color=data.color or "#10b981")
+    tag = Tag(name=data.name, color=data.color or "#9b1b2f")
     db.add(tag)
     db.commit()
     db.refresh(tag)

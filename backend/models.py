@@ -43,6 +43,6 @@ class Tag(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
-    color = Column(String, default="#10b981")
+    color = Column(String, default="#9b1b2f")
 
     passwords = relationship("Password", secondary=password_tags, back_populates="tags")

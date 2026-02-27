@@ -25,10 +25,10 @@ export default function Vault() {
     const [loading, setLoading] = useState(true);
     const [showTagCreator, setShowTagCreator] = useState(false);
     const [newTagName, setNewTagName] = useState('');
-    const [newTagColor, setNewTagColor] = useState('#10b981');
+    const [newTagColor, setNewTagColor] = useState('#9b1b2f');
     const [showFilters, setShowFilters] = useState(false);
 
-    const tagColors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+    const tagColors = ['#9b1b2f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -172,8 +172,8 @@ export default function Vault() {
                             <button
                                 onClick={() => setFavoritesOnly(!favoritesOnly)}
                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${favoritesOnly
-                                        ? 'bg-yellow-600/15 text-yellow-400 border border-yellow-600/30'
-                                        : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                    ? 'bg-yellow-600/15 text-yellow-400 border border-yellow-600/30'
+                                    : 'bg-gray-800 text-gray-400 border border-gray-700'
                                     }`}
                             >
                                 <Star className={`w-4 h-4 ${favoritesOnly ? 'fill-yellow-400' : ''}`} />
@@ -185,8 +185,8 @@ export default function Vault() {
                                 <button
                                     onClick={() => setFilterTag('')}
                                     className={`badge border transition-colors ${!filterTag
-                                            ? 'border-sekure-500 bg-sekure-600/10 text-sekure-400'
-                                            : 'border-gray-700 text-gray-400'
+                                        ? 'border-sekure-500 bg-sekure-600/10 text-sekure-400'
+                                        : 'border-gray-700 text-gray-400'
                                         }`}
                                 >
                                     Todas
@@ -196,8 +196,8 @@ export default function Vault() {
                                         key={tag.id}
                                         onClick={() => setFilterTag(filterTag === tag.name ? '' : tag.name)}
                                         className={`badge border transition-colors group ${filterTag === tag.name
-                                                ? 'bg-opacity-20 border-opacity-50'
-                                                : 'border-gray-700 hover:border-gray-600'
+                                            ? 'bg-opacity-20 border-opacity-50'
+                                            : 'border-gray-700 hover:border-gray-600'
                                             }`}
                                         style={{
                                             backgroundColor: filterTag === tag.name ? `${tag.color}20` : undefined,
@@ -297,8 +297,8 @@ export default function Vault() {
                                         >
                                             <Star
                                                 className={`w-4 h-4 ${entry.is_favorite
-                                                        ? 'text-yellow-400 fill-yellow-400'
-                                                        : 'text-gray-600 hover:text-yellow-400'
+                                                    ? 'text-yellow-400 fill-yellow-400'
+                                                    : 'text-gray-600 hover:text-yellow-400'
                                                     }`}
                                             />
                                         </button>

@@ -15,7 +15,7 @@ class MasterUnlock(BaseModel):
 # --- Tags ---
 class TagCreate(BaseModel):
     name: str
-    color: Optional[str] = "#10b981"
+    color: Optional[str] = "#9b1b2f"
 
 
 class TagOut(BaseModel):

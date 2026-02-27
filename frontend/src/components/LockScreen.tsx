@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { setupMaster, unlockVault } from '../api';
 import toast from 'react-hot-toast';
-import { Shield, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 interface LockScreenProps {
     isSetup: boolean;
@@ -57,9 +57,7 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
                 <div className="card text-center">
                     {/* Logo */}
                     <div className="flex justify-center mb-6">
-                        <div className="w-20 h-20 bg-gradient-to-br from-sekure-500 to-sekure-700 rounded-2xl flex items-center justify-center shadow-lg shadow-sekure-500/30">
-                            <Shield className="w-10 h-10 text-white" />
-                        </div>
+                        <img src="/sekure-longlogo.svg" alt="Sekure" className="h-20" />
                     </div>
 
                     <h1 className="text-3xl font-bold mb-2">Sekure</h1>
