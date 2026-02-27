@@ -1,3 +1,1 @@
 # sekure
-
-## Buenos dias.
