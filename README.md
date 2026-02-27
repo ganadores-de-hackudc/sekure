@@ -1,4 +1,4 @@
-# 🔒 Sekure — Gestor de Contraseñas Seguro
+#  Sekure — Gestor de Contraseñas Seguro
 
 <p align="center">
   <img src="frontend/public/favicon.svg" width="80" alt="Sekure logo" />
@@ -6,32 +6,32 @@
 
 **Sekure** es un gestor de contraseñas web moderno y seguro que permite generar, verificar, almacenar y organizar contraseñas de forma sencilla.
 
-## ✨ Funcionalidades
+##  Funcionalidades
 
-### 🔑 Generador de contraseñas
+###  Generador de contraseñas
 - **Aleatorio**: Caracteres criptográficamente seguros (`secrets` de Python)
 - **Frase de paso**: Palabras aleatorias tipo Diceware, fáciles de recordar
 - **PIN**: Generación de PINs numéricos seguros
 - Configuración de longitud, tipos de caracteres, separadores, etc.
 
-### 🛡️ Verificador de contraseñas
+###  Verificador de contraseñas
 - **Análisis de entropía** con gráfico acumulado por carácter
 - **Detección de filtraciones** via API de [Have I Been Pwned](https://haveibeenpwned.com/) (modelo de k-anonimato, nunca se envía la contraseña completa)
 - **Distribución de caracteres** gráfico tipo pie
 - Estimación de tiempo de crackeo (asumiendo 10B intentos/seg)
 - Recomendaciones personalizadas de mejora
 
-### 🏦 Bóveda segura
+###  Bóveda segura
 - Cifrado **AES-256-GCM** con clave derivada mediante **PBKDF2-HMAC-SHA256** (600.000 iteraciones)
 - Contraseña maestra para proteger todas las credenciales
 - Almacenamiento de título, usuario, URL, notas y contraseña cifrada
 
-### ⭐ Favoritos y etiquetas
+###  Favoritos y etiquetas
 - Marcar contraseñas como favoritas
 - Crear etiquetas con colores personalizados
 - Filtrar por favoritos, etiquetas o búsqueda de texto
 
-## 🏗️ Arquitectura
+##  Arquitectura
 
 ```
 sekure/
@@ -54,7 +54,7 @@ sekure/
 └── README.md
 ```
 
-## 🔐 Seguridad
+##  Seguridad
 
 | Aspecto | Implementación |
 |---------|---------------|
@@ -64,7 +64,7 @@ sekure/
 | Verificación maestra | Hash separado (no se reutiliza la clave de cifrado) |
 | Verificación de filtraciones | API HIBP con k-anonimato (solo se envían 5 chars del hash SHA-1) |
 
-## 🚀 Instalación y uso
+##  Instalación y uso
 
 ### Requisitos
 - Python 3.12+
@@ -94,7 +94,7 @@ npm run dev
 
 La aplicación estará disponible en **http://localhost:5173**
 
-## 📸 Vista previa
+##  Vista previa
 
 Al abrir la app por primera vez, se pedirá crear una **contraseña maestra** que protege toda la bóveda. Después se accede al panel con tres secciones:
 
@@ -102,10 +102,10 @@ Al abrir la app por primera vez, se pedirá crear una **contraseña maestra** qu
 2. **Verificador** — Analiza la fortaleza y busca en bases de datos de filtraciones
 3. **Bóveda** — Almacena, organiza y recupera contraseñas guardadas
 
-## 👥 Equipo
+##  Equipo
 
 Desarrollado durante **HackUDC** por el equipo **Ganadores de HackUDC**.
 
-## 📄 Licencia
+##  Licencia
 
 MIT
