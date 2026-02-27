@@ -57,10 +57,8 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
                 <div className="card text-center">
                     {/* Logo */}
                     <div className="flex justify-center mb-6">
-                        <img src="/sekure-longlogo.svg" alt="Sekure" className="h-20" />
+                        <img src="/sekure-longlogo.svg" alt="Sekure" className="h-80" />
                     </div>
-
-                    <h1 className="text-3xl font-bold mb-2">Sekure</h1>
                     <p className="text-gray-400 mb-8">
                         {isSetup
                             ? 'Introduce tu contraseña maestra para desbloquear'
