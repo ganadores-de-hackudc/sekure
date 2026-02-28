@@ -103,18 +103,18 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                     <NavLink
                         to="/kids"
                         className={({ isActive }) =>
-                            isActive ? 'sidebar-link-active' : 'sidebar-link'
+                            isActive ? 'sidebar-link-active !py-3' : 'sidebar-link !py-3'
                         }
                     >
-                        <img src="/sekure-kids-logo.svg" alt="sekure KIDS" className="h-5" />
+                        <img src="/sekure-kids-logo.svg" alt="sekure KIDS" className="h-8 w-auto" />
                     </NavLink>
                 </div>
 
                 <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
-                    <div className="flex items-center gap-2 px-4 py-2 mb-2">
+                    <NavLink to="/profile" className={({ isActive }) => `flex items-center gap-2 px-4 py-2 mb-2 rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-sekure-50 dark:bg-sekure-900/10 text-sekure-600 dark:text-sekure-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                         <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{username}</span>
-                    </div>
+                    </NavLink>
                     <button onClick={handleLogout} className="sidebar-link text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-600/10">
                         <LogOut className="w-5 h-5" />
                         {t('nav.logout')}
@@ -165,18 +165,18 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                                 to="/kids"
                                 onClick={() => setSidebarOpen(false)}
                                 className={({ isActive }) =>
-                                    isActive ? 'sidebar-link-active' : 'sidebar-link'
+                                    isActive ? 'sidebar-link-active !py-3' : 'sidebar-link !py-3'
                                 }
                             >
-                                <img src="/sekure-kids-logo.svg" alt="sekure KIDS" className="h-5" />
+                                <img src="/sekure-kids-logo.svg" alt="sekure KIDS" className="h-8 w-auto" />
                             </NavLink>
                         </div>
 
                         <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
-                            <div className="flex items-center gap-2 px-4 py-2 mb-2">
+                            <NavLink to="/profile" onClick={() => setSidebarOpen(false)} className={({ isActive }) => `flex items-center gap-2 px-4 py-2 mb-2 rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-sekure-50 dark:bg-sekure-900/10 text-sekure-600 dark:text-sekure-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                                 <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                 <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{username}</span>
-                            </div>
+                            </NavLink>
                             <button onClick={handleLogout} className="sidebar-link text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-600/10">
                                 <LogOut className="w-5 h-5" />
                                 {t('nav.logout')}

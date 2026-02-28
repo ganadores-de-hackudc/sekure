@@ -45,6 +45,7 @@ class GenerateRequest(BaseModel):
     include_symbols: bool = True
     num_words: int = 5  # for passphrase method
     separator: str = "-"  # for passphrase method
+    custom_words: list[str] = []  # custom words to include in passphrase
 
 
 class GenerateResponse(BaseModel):
@@ -195,3 +196,18 @@ class KidsAccountOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Profile ---
+class ChangeUsername(BaseModel):
+    new_username: str
+    current_password: str
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class DeleteAccount(BaseModel):
+    current_password: str

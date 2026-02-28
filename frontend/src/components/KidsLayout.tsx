@@ -51,7 +51,7 @@ export default function KidsLayout({ children, username, onLogout }: KidsLayoutP
                         <div ref={langRef} className="relative">
                             <button onClick={() => setLangOpen(!langOpen)} className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors flex items-center gap-1 text-gray-600 dark:text-gray-300">
                                 <Globe className="w-4 h-4" />
-                                <span className="text-xs">{currentLang.flag}</span>
+                                <img src={currentLang.flag} alt={currentLang.label} className="w-4 h-4 rounded-sm object-cover" />
                                 <ChevronDown className="w-3 h-3" />
                             </button>
                             {langOpen && (
@@ -59,7 +59,7 @@ export default function KidsLayout({ children, username, onLogout }: KidsLayoutP
                                     {LANGUAGES.map(l => (
                                         <button key={l.code} onClick={() => { setLang(l.code); setLangOpen(false); }}
                                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors ${l.code === lang ? 'bg-purple-50 dark:bg-purple-800/20 text-purple-600 dark:text-purple-400 font-medium' : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
-                                            <span>{l.flag}</span>
+                                            <img src={l.flag} alt={l.label} className="w-4 h-4 rounded-sm object-cover" />
                                             {l.label}
                                         </button>
                                     ))}

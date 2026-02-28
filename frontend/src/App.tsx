@@ -13,6 +13,7 @@ import Groups from './components/Groups';
 import SekureKids from './components/SekureKids';
 import KidsLayout from './components/KidsLayout';
 import KidsVault from './components/KidsVault';
+import Profile from './components/Profile';
 
 function AppContent() {
     const [auth, setAuth] = useState<AuthStatus | null>(null);
@@ -63,6 +64,10 @@ function AppContent() {
         );
     }
 
+    const handleUsernameChanged = (newUsername: string) => {
+        setAuth(prev => prev && prev.user ? { ...prev, user: { ...prev.user, username: newUsername } } : prev);
+    };
+
     // Normal user: standard layout + kids route
     return (
         <Layout username={auth.user?.username ?? ''} onLogout={handleLogout}>
@@ -73,6 +78,7 @@ function AppContent() {
                 <Route path="/checker" element={<Checker />} />
                 <Route path="/groups" element={<Groups currentUserId={auth.user?.id ?? 0} />} />
                 <Route path="/kids" element={<SekureKids />} />
+                <Route path="/profile" element={<Profile username={auth.user?.username ?? ''} onLogout={handleLogout} onUsernameChanged={handleUsernameChanged} />} />
                 <Route path="*" element={<Navigate to="/vault" replace />} />
             </Routes>
         </Layout>
