@@ -179,11 +179,19 @@ def generate_random_password(
     return "".join(password_chars)
 
 
-def generate_passphrase(num_words: int = 5, separator: str = "-") -> str:
-    """Generate a passphrase using random words from the wordlist."""
-    words = [secrets.choice(WORDLIST) for _ in range(num_words)]
-    # Capitalize first letter of each word for better readability
-    words = [w.capitalize() for w in words]
+def generate_passphrase(num_words: int = 5, separator: str = "-", custom_words: list[str] | None = None) -> str:
+    """Generate a passphrase using random words from the wordlist.
+    If custom_words are provided, they are included and the remaining slots
+    are filled with random words from the wordlist."""
+    cw = [w.strip() for w in (custom_words or []) if w.strip()]
+    # Number of random words to add (at least 1 random word always)
+    random_count = max(1, num_words - len(cw))
+    random_words = [secrets.choice(WORDLIST) for _ in range(random_count)]
+    # Combine custom + random, then shuffle positions
+    words = [w.capitalize() for w in cw] + [w.capitalize() for w in random_words]
+    for i in range(len(words) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        words[i], words[j] = words[j], words[i]
     # Add a random number and symbol for extra entropy
     number = str(secrets.randbelow(100))
     symbol = secrets.choice("!@#$%&*")
@@ -205,10 +213,11 @@ def generate_password(
     include_symbols: bool = True,
     num_words: int = 5,
     separator: str = "-",
+    custom_words: list[str] | None = None,
 ) -> str:
     """Generate a password using the specified method."""
     if method == "passphrase":
-        return generate_passphrase(num_words, separator)
+        return generate_passphrase(num_words, separator, custom_words)
     elif method == "pin":
         return generate_pin(length)
     else:

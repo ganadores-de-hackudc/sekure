@@ -7,6 +7,7 @@ export interface GenerateRequest {
     include_symbols: boolean;
     num_words: number;
     separator: string;
+    custom_words: string[];
 }
 
 export interface GenerateResponse {

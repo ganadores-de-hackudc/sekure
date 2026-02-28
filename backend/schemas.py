@@ -39,6 +39,7 @@ class GenerateRequest(BaseModel):
     include_symbols: bool = True
     num_words: int = 5  # for passphrase method
     separator: str = "-"  # for passphrase method
+    custom_words: list[str] = []  # custom words to include in passphrase
 
 
 class GenerateResponse(BaseModel):

@@ -75,6 +75,9 @@ const translations: Record<Lang, Record<string, string>> = {
         'gen.placeholder_sub': 'Usa los controles de la izquierda',
         'gen.num_words': 'Número de palabras',
         'gen.separator': 'Separador',
+        'gen.custom_words': 'Palabras personalizadas',
+        'gen.custom_word_placeholder': 'Escribe una palabra...',
+        'gen.add_custom_word': 'Añadir palabra',
         'gen.pin_length': 'Longitud del PIN',
 
         // Strength
@@ -317,6 +320,9 @@ const translations: Record<Lang, Record<string, string>> = {
         'gen.placeholder_sub': 'Use the controls on the left',
         'gen.num_words': 'Number of words',
         'gen.separator': 'Separator',
+        'gen.custom_words': 'Custom words',
+        'gen.custom_word_placeholder': 'Type a word...',
+        'gen.add_custom_word': 'Add word',
         'gen.pin_length': 'PIN length',
 
         'strength.very_weak': 'Very weak',
@@ -552,6 +558,9 @@ const translations: Record<Lang, Record<string, string>> = {
         'gen.placeholder_sub': 'Usa os controis da esquerda',
         'gen.num_words': 'Número de palabras',
         'gen.separator': 'Separador',
+        'gen.custom_words': 'Palabras personalizadas',
+        'gen.custom_word_placeholder': 'Escribe unha palabra...',
+        'gen.add_custom_word': 'Engadir palabra',
         'gen.pin_length': 'Lonxitude do PIN',
 
         'strength.very_weak': 'Moi débil',

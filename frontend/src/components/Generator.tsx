@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import SaveToVaultModal from './SaveToVaultModal';
 import {
     KeyRound, Copy, RefreshCw, Save, Zap,
-    Hash, Type, AtSign, Shuffle,
+    Hash, Type, AtSign, Shuffle, Plus, X,
 } from 'lucide-react';
 
 export default function Generator() {
@@ -27,6 +27,7 @@ export default function Generator() {
         include_symbols: true,
         num_words: 5,
         separator: '-',
+        custom_words: [],
     });
     const [result, setResult] = useState<GenerateResponse | null>(null);
     const [loading, setLoading] = useState(false);
@@ -171,6 +172,42 @@ export default function Generator() {
                                                 }`}
                                         >{sep === ' ' ? '⎵' : sep}</button>
                                     ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">{t('gen.custom_words')}</label>
+                                <div className="space-y-2">
+                                    {config.custom_words.map((word, idx) => (
+                                        <div key={idx} className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={word}
+                                                onChange={(e) => {
+                                                    const updated = [...config.custom_words];
+                                                    updated[idx] = e.target.value;
+                                                    setConfig({ ...config, custom_words: updated });
+                                                }}
+                                                placeholder={t('gen.custom_word_placeholder')}
+                                                className="flex-1 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-sekure-500 focus:ring-1 focus:ring-sekure-500"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const updated = config.custom_words.filter((_, i) => i !== idx);
+                                                    setConfig({ ...config, custom_words: updated });
+                                                }}
+                                                className="p-2 rounded-md border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-red-500 hover:border-red-300 dark:hover:border-red-500 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={() => setConfig({ ...config, custom_words: [...config.custom_words, ''] })}
+                                        className="flex items-center gap-2 text-sm text-sekure-600 dark:text-sekure-400 hover:text-sekure-700 dark:hover:text-sekure-300 transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        {t('gen.add_custom_word')}
+                                    </button>
                                 </div>
                             </div>
                         </>
