@@ -211,3 +211,12 @@ class ChangePassword(BaseModel):
 
 class DeleteAccount(BaseModel):
     current_password: str
+
+
+# --- Share Links ---
+class CreateShareLink(BaseModel):
+    encrypted_data: str  # base64-encoded encrypted JSON
+    iv: str  # base64-encoded IV
+    expires_in: str  # "1h", "1d", "1w", "1m"
+    access_mode: str = "anyone"  # "anyone" or "specific"
+    allowed_usernames: list[str] = []

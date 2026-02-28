@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import engine, get_db, Base
-from models import User, UserSession, Password, Tag, password_tags, Group, GroupMember, GroupPassword, GroupInvitation
+from models import User, UserSession, Password, Tag, password_tags, Group, GroupMember, GroupPassword, GroupInvitation, SharedLink
 from schemas import (
     UserRegister, UserLogin, RecoverRequest,
     TagCreate, TagOut,
@@ -20,6 +20,7 @@ from schemas import (
     GroupPasswordCreate, GroupPasswordOut, GroupPasswordWithPassword,
     KidsAccountCreate, KidsAccountOut,
     ChangeUsername, ChangePassword, DeleteAccount,
+    CreateShareLink,
 )
 from crypto import (
     generate_salt, derive_key, hash_master_password,
@@ -1190,6 +1191,77 @@ def delete_account(data: DeleteAccount, session=Depends(get_current_session), db
     db.delete(user)
     db.commit()
     return {"message": "Cuenta eliminada."}
+
+
+# ==================== SHARE LINKS ====================
+
+@app.post("/api/share")
+def create_share_link(
+    data: CreateShareLink,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Create a password share link. Frontend encrypts the data; we just store it."""
+    from datetime import timedelta
+
+    durations = {
+        "1h": timedelta(hours=1),
+        "1d": timedelta(days=1),
+        "1w": timedelta(weeks=1),
+        "1m": timedelta(days=30),
+    }
+    delta = durations.get(data.expires_in)
+    if not delta:
+        raise HTTPException(400, "Duración inválida. Usa: 1h, 1d, 1w, 1m")
+
+    share_id = secrets.token_urlsafe(16)
+    link = SharedLink(
+        id=share_id,
+        creator_id=session["user_id"],
+        encrypted_data=data.encrypted_data,
+        iv=data.iv,
+        access_mode=data.access_mode,
+        allowed_usernames=",".join([u.strip().lower() for u in data.allowed_usernames]) if data.allowed_usernames else "",
+        expires_at=datetime.now(timezone.utc) + delta,
+    )
+    db.add(link)
+    db.commit()
+    return {"id": share_id}
+
+
+@app.get("/api/share/{share_id}")
+def get_share_link(
+    share_id: str,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Retrieve a shared password. Validates expiry and access."""
+    link = db.query(SharedLink).filter(SharedLink.id == share_id).first()
+    if not link:
+        raise HTTPException(404, "Enlace no encontrado.")
+
+    if datetime.now(timezone.utc) > link.expires_at.replace(tzinfo=timezone.utc):
+        # Clean up expired link
+        db.delete(link)
+        db.commit()
+        raise HTTPException(410, "Este enlace ha caducado.")
+
+    # Check access
+    if link.access_mode == "specific":
+        allowed = [u.strip().lower() for u in link.allowed_usernames.split(",") if u.strip()]
+        current_username = session["username"].lower()
+        if current_username not in allowed:
+            raise HTTPException(403, "No tienes acceso a este enlace.")
+
+    # Get creator username
+    creator = db.query(User).filter(User.id == link.creator_id).first()
+
+    return {
+        "encrypted_data": link.encrypted_data,
+        "iv": link.iv,
+        "creator_username": creator.username if creator else "unknown",
+        "expires_at": link.expires_at.isoformat(),
+    }
 
 
 if __name__ == "__main__":

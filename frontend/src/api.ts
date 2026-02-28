@@ -256,3 +256,25 @@ export const deleteAccount = (currentPassword: string) =>
         method: 'DELETE',
         body: JSON.stringify({ current_password: currentPassword }),
     });
+
+// ==================== SHARE LINKS ====================
+export const createShareLink = (data: {
+    encrypted_data: string;
+    iv: string;
+    expires_in: string;
+    access_mode: string;
+    allowed_usernames: string[];
+}) =>
+    request<{ id: string }>('/share', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+
+export const getShareLink = (shareId: string) =>
+    request<{
+        encrypted_data: string;
+        iv: string;
+        creator_username: string;
+        expires_at: string;
+    }>(`/share/${shareId}`);
+

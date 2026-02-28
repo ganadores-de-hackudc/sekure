@@ -147,3 +147,20 @@ class GroupInvitation(Base):
     group = relationship("Group", back_populates="invitations")
     inviter = relationship("User", foreign_keys=[inviter_id])
     invitee = relationship("User", foreign_keys=[invitee_id])
+
+
+# ==================== SHARED LINKS ====================
+
+class SharedLink(Base):
+    __tablename__ = "shared_links"
+
+    id = Column(String, primary_key=True)  # UUID-style token
+    creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    encrypted_data = Column(Text, nullable=False)  # JSON blob encrypted with link key
+    iv = Column(String, nullable=False)
+    access_mode = Column(String, default="anyone")  # "anyone" or "specific"
+    allowed_usernames = Column(Text, default="")  # comma-separated usernames
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime, nullable=False)
+
+    creator = relationship("User")
