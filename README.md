@@ -1,7 +1,7 @@
 # Sekure — Gestor de Contraseñas Seguro
 
 <p align="center">
-  <img src="sekure-longlogo.svg" width="300" alt="Sekure logo" />
+  <img src="frontend/public/sekure-longlogo.svg" width="300" alt="Sekure logo" />
 </p>
 
 **Sekure** es un gestor de contraseñas web moderno, seguro y de conocimiento cero (zero-knowledge) que permite generar, verificar, almacenar, compartir y organizar contraseñas desde la web y desde una extensión de navegador.
@@ -223,7 +223,7 @@ Al abrir la app por primera vez, se pedirá crear una **contraseña maestra** qu
 
 ## Equipo
 
-Desarrollado durante **HackUDC** por el equipo **Ganadores de HackUDC**.
+Desarrollado durante **HackUDC 2026** por el equipo **Ganadores de HackUDC**.
 
 ## Licencia
 
