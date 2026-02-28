@@ -16,6 +16,7 @@ import {
     Save, Lock, LogOut, XCircle, Download, Share2, Pencil,
 } from 'lucide-react';
 import ShareModal from './ShareModal';
+import Favicon from './Favicon';
 
 // ─── Add Password Modal ───
 function AddGroupPasswordModal({ groupId, onClose }: { groupId: number; onClose: () => void }) {
@@ -212,7 +213,7 @@ function ImportPasswordModal({ groupId, onClose }: { groupId: number; onClose: (
                         {filtered.map(entry => (
                             <div key={entry.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                 <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
-                                    {entry.url ? <Globe className="w-4 h-4 text-gray-400" /> : <Lock className="w-4 h-4 text-gray-400" />}
+                                    {entry.url ? <Favicon url={entry.url} className="w-4 h-4" /> : <Lock className="w-4 h-4 text-gray-400" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-gray-800 dark:text-white truncate text-sm">{entry.title}</p>
@@ -433,7 +434,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                         <div key={entry.id} className="card-hover group flex flex-col h-full">
                             <div className="flex items-start gap-4 mb-4">
                                 <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
-                                    {entry.url ? <Globe className="w-6 h-6 text-gray-400" /> : <User className="w-6 h-6 text-gray-400" />}
+                                    {entry.url ? <Favicon url={entry.url} className="w-6 h-6" /> : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="font-semibold text-gray-800 dark:text-white truncate mb-1">{entry.title}</h3>

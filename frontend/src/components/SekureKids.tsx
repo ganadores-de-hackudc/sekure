@@ -10,6 +10,7 @@ import {
     Plus, ArrowLeft, Trash2, Eye, EyeOff, Copy, Globe, User, ExternalLink, X,
     Save, Lock, UserPlus, Pencil,
 } from 'lucide-react';
+import Favicon from './Favicon';
 
 /* ─── Add Password Modal (for kid's vault) ─── */
 function AddKidsPasswordModal({ kidId, onClose }: { kidId: number; onClose: () => void }) {
@@ -154,7 +155,7 @@ function KidVaultView({ kid, onBack }: { kid: KidsAccount; onBack: () => void })
                         <div key={entry.id} className="card-hover group flex flex-col h-full">
                             <div className="flex items-start gap-4 mb-4">
                                 <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
-                                    {entry.url ? <Globe className="w-6 h-6 text-gray-400" /> : <User className="w-6 h-6 text-gray-400" />}
+                                    {entry.url ? <Favicon url={entry.url} className="w-6 h-6" /> : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="font-semibold text-gray-800 dark:text-white truncate mb-1">{entry.title}</h3>

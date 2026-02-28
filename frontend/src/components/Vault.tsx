@@ -8,6 +8,7 @@ import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
 import SaveToVaultModal from './SaveToVaultModal';
 import ShareModal from './ShareModal';
+import Favicon from './Favicon';
 import {
     Archive, Search, Star, Plus, Tag as TagIcon,
     Eye, EyeOff, Copy, Trash2, ExternalLink,
@@ -201,7 +202,7 @@ export default function Vault() {
                         <div key={entry.id} className="card-hover group flex flex-col h-full">
                             <div className="flex items-start gap-4 mb-4">
                                 <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
-                                    {entry.url ? <Globe className="w-6 h-6 text-gray-400" /> : <User className="w-6 h-6 text-gray-400" />}
+                                    {entry.url ? <Favicon url={entry.url} className="w-6 h-6" /> : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-1">
