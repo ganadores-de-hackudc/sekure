@@ -19,9 +19,82 @@
     let matchingEntries = [];
     let allVaultEntries = []; // full vault for cross-domain duplicate check
     let isAuthenticated = false;
+    let currentSuggestedPassword = '';
 
     // Proactive credential tracking — stores the latest values as user types
     let trackedCredentials = { username: '', password: '' };
+
+    // ─── Password Strength (client-side, mirrors backend logic) ───
+    function calculateEntropy(password) {
+        if (!password) return 0;
+        let charset = 0;
+        if (/[a-z]/.test(password)) charset += 26;
+        if (/[A-Z]/.test(password)) charset += 26;
+        if (/[0-9]/.test(password)) charset += 10;
+        if (/[^a-zA-Z0-9]/.test(password)) charset += 32;
+        if (charset === 0) charset = 128;
+        return Math.round(password.length * Math.log2(charset) * 100) / 100;
+    }
+
+    function getStrengthInfo(entropy) {
+        if (entropy < 28) return { label: 'Muy débil', score: 0, color: '#ef4444' };
+        if (entropy < 36) return { label: 'Débil', score: 1, color: '#f97316' };
+        if (entropy < 60) return { label: 'Moderada', score: 2, color: '#ca8a04' };
+        if (entropy < 80) return { label: 'Fuerte', score: 3, color: '#9b1b2f' };
+        return { label: 'Muy fuerte', score: 4, color: '#d43d55' };
+    }
+
+    function estimateCrackTime(entropy) {
+        if (entropy <= 0) return 'Instantáneo';
+        const guesses = Math.pow(2, entropy);
+        const seconds = guesses / 10_000_000_000;
+        if (seconds < 1) return 'Instantáneo';
+        if (seconds < 60) return `${Math.round(seconds)} segundos`;
+        if (seconds < 3600) return `${Math.round(seconds / 60)} minutos`;
+        if (seconds < 86400) return `${Math.round(seconds / 3600)} horas`;
+        if (seconds < 31536000) return `${Math.round(seconds / 86400)} días`;
+        const years = seconds / 31536000;
+        if (years < 1000) return `${Math.round(years)} años`;
+        if (years < 1e6) return `${Math.round(years / 1000)} miles de años`;
+        if (years < 1e9) return `${Math.round(years / 1e6)} millones de años`;
+        return 'Más que la edad del universo';
+    }
+
+    // ─── Password Generation (client-side, mirrors backend logic) ───
+    function generateSecurePassword(length = 20) {
+        const lower = 'abcdefghijklmnopqrstuvwxyz';
+        const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const digits = '0123456789';
+        const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+        const all = lower + upper + digits + symbols;
+
+        // Guarantee at least one from each set
+        const required = [
+            lower[cryptoRandBelow(lower.length)],
+            upper[cryptoRandBelow(upper.length)],
+            digits[cryptoRandBelow(digits.length)],
+            symbols[cryptoRandBelow(symbols.length)],
+        ];
+
+        const remaining = [];
+        for (let i = 0; i < length - required.length; i++) {
+            remaining.push(all[cryptoRandBelow(all.length)]);
+        }
+
+        // Fisher-Yates shuffle
+        const chars = [...required, ...remaining];
+        for (let i = chars.length - 1; i > 0; i--) {
+            const j = cryptoRandBelow(i + 1);
+            [chars[i], chars[j]] = [chars[j], chars[i]];
+        }
+        return chars.join('');
+    }
+
+    function cryptoRandBelow(max) {
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        return array[0] % max;
+    }
 
     // Sekure's own domains — never offer to save the master password
     const SEKURE_DOMAINS = ['sekure-woad.vercel.app', 'localhost'];
@@ -83,24 +156,28 @@
         if (field.__sekureAttached) return;
         field.__sekureAttached = true;
 
-        // Show Sekure icon indicator on focus
+        // Show Sekure dropdown on focus (entries + generator + strength)
         field.addEventListener('focus', () => {
             currentPasswordField = field;
-            if (matchingEntries.length > 0) {
+            showDropdown(field);
+        });
+
+        field.addEventListener('click', () => {
+            if (!currentDropdown) {
                 showDropdown(field);
             }
         });
 
-        field.addEventListener('click', () => {
-            if (matchingEntries.length > 0 && !currentDropdown) {
-                showDropdown(field);
-            }
+        // Update strength bar in real-time as user types
+        field.addEventListener('input', () => {
+            updateStrengthBar(field.value);
         });
     }
 
     // ─── Autofill Dropdown ───
     function showDropdown(field) {
         removeDropdown();
+        currentSuggestedPassword = generateSecurePassword(20);
 
         const dropdown = document.createElement('div');
         dropdown.id = DROPDOWN_ID;
@@ -111,8 +188,8 @@
             position: fixed;
             top: ${rect.bottom + 4}px;
             left: ${rect.left}px;
-            width: ${Math.max(rect.width, 280)}px;
-            max-height: 260px;
+            width: ${Math.max(rect.width, 300)}px;
+            max-height: 380px;
             overflow-y: auto;
             z-index: 2147483647;
             background: white;
@@ -132,13 +209,14 @@
             border-radius: 10px 10px 0 0;
         `;
         const logoUrl = chrome.runtime.getURL('icons/sekure-longlogo.svg');
+        const entryCount = matchingEntries.length;
         header.innerHTML = `
             <img src="${logoUrl}" alt="Sekure" style="height:20px; width:auto;">
-            <span style="font-size:11px; color:#9ca3af; margin-left:auto;">${matchingEntries.length} contraseña${matchingEntries.length !== 1 ? 's' : ''}</span>
+            <span style="font-size:11px; color:#9ca3af; margin-left:auto;">${entryCount} contraseña${entryCount !== 1 ? 's' : ''}</span>
         `;
         dropdown.appendChild(header);
 
-        // Entries
+        // Vault entries (if any)
         matchingEntries.forEach(entry => {
             const item = document.createElement('div');
             item.style.cssText = `
@@ -176,6 +254,111 @@
             dropdown.appendChild(item);
         });
 
+        // ─── Suggested Password Section ───
+        const suggestSection = document.createElement('div');
+        suggestSection.style.cssText = `
+            border-top: 1px solid #e5e7eb;
+            padding: 10px 14px;
+            background: #fefce8;
+        `;
+        suggestSection.innerHTML = `
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                </svg>
+                <span style="font-size:11px; font-weight:600; color:#854d0e;">Contraseña sugerida</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <div id="sekure-suggested-pw" style="
+                    flex:1; font-size:12px; font-family:'Courier New',monospace; color:#1f2937;
+                    background:#fffbeb; border:1px solid #fde68a; border-radius:6px;
+                    padding:7px 10px; cursor:pointer; word-break:break-all;
+                    transition: background 0.15s;
+                    line-height:1.4;
+                " title="Haz clic para usar esta contraseña">${escapeHtml(currentSuggestedPassword)}</div>
+                <button id="sekure-regenerate" style="
+                    background:none; border:1px solid #fde68a; border-radius:6px;
+                    cursor:pointer; padding:6px; display:flex; align-items:center; justify-content:center;
+                    color:#ca8a04; transition: background 0.15s;
+                " title="Generar otra contraseña">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/>
+                        <path d="M2 11.5a10 10 0 0 1 18.8-4.3"/><path d="M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+        dropdown.appendChild(suggestSection);
+
+        // Suggested password click → fill into field
+        setTimeout(() => {
+            const suggestedEl = dropdown.querySelector('#sekure-suggested-pw');
+            const regenBtn = dropdown.querySelector('#sekure-regenerate');
+
+            if (suggestedEl) {
+                suggestedEl.addEventListener('mouseenter', () => { suggestedEl.style.background = '#fef3c7'; });
+                suggestedEl.addEventListener('mouseleave', () => { suggestedEl.style.background = '#fffbeb'; });
+                suggestedEl.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setNativeValue(field, currentSuggestedPassword);
+                    updateStrengthBar(currentSuggestedPassword);
+                    removeDropdown();
+                });
+            }
+
+            if (regenBtn) {
+                regenBtn.addEventListener('mouseenter', () => { regenBtn.style.background = '#fef3c7'; });
+                regenBtn.addEventListener('mouseleave', () => { regenBtn.style.background = 'transparent'; });
+                regenBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    currentSuggestedPassword = generateSecurePassword(20);
+                    if (suggestedEl) suggestedEl.textContent = currentSuggestedPassword;
+                });
+            }
+        }, 0);
+
+        // ─── Strength Bar Section ───
+        const strengthSection = document.createElement('div');
+        strengthSection.id = 'sekure-strength-section';
+        strengthSection.style.cssText = `
+            border-top: 1px solid #e5e7eb;
+            padding: 10px 14px;
+            background: #fafafa;
+            border-radius: 0 0 10px 10px;
+        `;
+
+        const currentValue = field.value || '';
+        const entropy = calculateEntropy(currentValue);
+        const info = getStrengthInfo(entropy);
+        const barWidth = currentValue ? (info.score + 1) * 20 : 0;
+        const crackTime = currentValue ? estimateCrackTime(entropy) : '';
+
+        strengthSection.innerHTML = `
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span style="font-size:11px; font-weight:600; color:#374151;">Fortaleza</span>
+                <span id="sekure-strength-label" style="font-size:11px; font-weight:600; color:${info.color}; margin-left:auto;">
+                    ${currentValue ? info.label : ''}
+                </span>
+            </div>
+            <div style="width:100%; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden; margin-bottom:4px;">
+                <div id="sekure-strength-bar" style="
+                    height:100%; border-radius:3px;
+                    background:${info.color};
+                    width:${barWidth}%;
+                    transition: width 0.3s ease, background 0.3s ease;
+                "></div>
+            </div>
+            <div id="sekure-crack-time" style="font-size:10px; color:#9ca3af;">
+                ${crackTime ? `Tiempo de crackeo: ${crackTime}` : 'Escribe para analizar la fortaleza'}
+            </div>
+        `;
+        dropdown.appendChild(strengthSection);
+
         document.body.appendChild(dropdown);
         currentDropdown = dropdown;
 
@@ -184,6 +367,32 @@
             document.addEventListener('click', outsideClickHandler, true);
             document.addEventListener('keydown', escHandler, true);
         }, 10);
+    }
+
+    function updateStrengthBar(value) {
+        const bar = document.getElementById('sekure-strength-bar');
+        const label = document.getElementById('sekure-strength-label');
+        const crackEl = document.getElementById('sekure-crack-time');
+        if (!bar || !label || !crackEl) return;
+
+        if (!value) {
+            bar.style.width = '0%';
+            bar.style.background = '#e5e7eb';
+            label.textContent = '';
+            crackEl.textContent = 'Escribe para analizar la fortaleza';
+            return;
+        }
+
+        const entropy = calculateEntropy(value);
+        const info = getStrengthInfo(entropy);
+        const barWidth = (info.score + 1) * 20;
+        const crackTime = estimateCrackTime(entropy);
+
+        bar.style.width = `${barWidth}%`;
+        bar.style.background = info.color;
+        label.textContent = info.label;
+        label.style.color = info.color;
+        crackEl.textContent = `Tiempo de crackeo: ${crackTime}`;
     }
 
     function removeDropdown() {
