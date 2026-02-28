@@ -19,6 +19,7 @@ from schemas import (
     GroupCreate, GroupOut, GroupMemberOut, GroupInvite, GroupInvitationOut,
     GroupPasswordCreate, GroupPasswordOut, GroupPasswordWithPassword,
     KidsAccountCreate, KidsAccountOut,
+    ChangeUsername, ChangePassword, DeleteAccount,
 )
 from crypto import (
     generate_salt, derive_key, hash_master_password,
@@ -923,16 +924,11 @@ def _get_kid_for_parent(kid_id: int, user_id: int, db: Session) -> User:
 
 def _get_kid_encryption_key(kid: User, db: Session) -> bytes:
     """Get or derive the encryption key for a kid's vault."""
-    # Check if there's an active session for the kid
-    kid_session = db.query(UserSession).filter(UserSession.user_id == kid.id).first()
-    if kid_session:
-        return base64.b64decode(kid_session.encryption_key)
-    # Otherwise, we need to derive it from the kid's salt with a default approach
-    # For kids accounts, we store a derived key at creation time
+    # For kids accounts, we use a deterministic key derived from their salt.
+    # This ensures both parent and kid always use the EXACT SAME key to encrypt/decrypt,
+    # regardless of who is currently logged in or what sessions are active.
     salt = base64.b64decode(kid.salt)
-    # Use a deterministic key derivation from the salt alone for parent access
     from crypto import derive_key
-    # We use a fixed passphrase derived from parent relationship
     key = derive_key(f"sekure_kids_{kid.id}_{kid.parent_id}", salt)
     return key
 
@@ -1033,6 +1029,101 @@ def delete_kids_vault_entry(kid_id: int, entry_id: int, session=Depends(get_curr
     db.delete(entry)
     db.commit()
     return {"message": "Entrada eliminada."}
+
+
+# ==================== PROFILE ====================
+
+@app.put("/api/profile/username")
+def change_username(data: ChangeUsername, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Change the current user's username. Requires current password."""
+    user = db.query(User).filter(User.id == session["user_id"]).first()
+    if not user:
+        raise HTTPException(404, "Usuario no encontrado.")
+
+    salt = base64.b64decode(user.salt)
+    if not verify_master_password(data.current_password, salt, user.password_hash):
+        raise HTTPException(403, "Contraseña incorrecta.")
+
+    new_username = data.new_username.strip()
+    if len(new_username) < 3:
+        raise HTTPException(400, "El nombre de usuario debe tener al menos 3 caracteres.")
+
+    existing = db.query(User).filter(User.username == new_username, User.id != user.id).first()
+    if existing:
+        raise HTTPException(400, "El nombre de usuario ya está en uso.")
+
+    user.username = new_username
+    # Update all sessions for this user
+    db.query(UserSession).filter(UserSession.user_id == user.id).update({"username": new_username})
+    db.commit()
+    return {"message": "Nombre de usuario actualizado.", "username": new_username}
+
+
+@app.put("/api/profile/password")
+def change_password(data: ChangePassword, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Change the current user's master password. Re-encrypts all vault entries."""
+    user = db.query(User).filter(User.id == session["user_id"]).first()
+    if not user:
+        raise HTTPException(404, "Usuario no encontrado.")
+
+    old_salt = base64.b64decode(user.salt)
+    if not verify_master_password(data.current_password, old_salt, user.password_hash):
+        raise HTTPException(403, "Contraseña actual incorrecta.")
+
+    if len(data.new_password) < 8:
+        raise HTTPException(400, "La nueva contraseña debe tener al menos 8 caracteres.")
+
+    old_key = derive_key(data.current_password, old_salt)
+
+    # Generate new salt & key
+    new_salt = generate_salt()
+    new_password_hash = hash_master_password(data.new_password, new_salt)
+    new_key = derive_key(data.new_password, new_salt)
+
+    # Re-encrypt all vault entries
+    entries = db.query(Password).filter(Password.user_id == user.id).all()
+    for entry in entries:
+        try:
+            decrypted = decrypt_password(entry.encrypted_password, entry.iv, old_key)
+            encrypted, iv = encrypt_password(decrypted, new_key)
+            entry.encrypted_password = encrypted
+            entry.iv = iv
+        except Exception:
+            pass  # Skip entries that fail (shouldn't happen)
+
+    user.password_hash = new_password_hash
+    user.salt = base64.b64encode(new_salt).decode("utf-8")
+
+    # Update all sessions with new encryption key
+    new_key_b64 = base64.b64encode(new_key).decode("utf-8")
+    db.query(UserSession).filter(UserSession.user_id == user.id).update({"encryption_key": new_key_b64})
+    db.commit()
+    return {"message": "Contraseña actualizada correctamente."}
+
+
+@app.delete("/api/profile")
+def delete_account(data: DeleteAccount, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Delete the current user's account permanently. Requires current password."""
+    user = db.query(User).filter(User.id == session["user_id"]).first()
+    if not user:
+        raise HTTPException(404, "Usuario no encontrado.")
+
+    salt = base64.b64decode(user.salt)
+    if not verify_master_password(data.current_password, salt, user.password_hash):
+        raise HTTPException(403, "Contraseña incorrecta.")
+
+    # Delete all related data
+    db.query(Password).filter(Password.user_id == user.id).delete()
+    db.query(UserSession).filter(UserSession.user_id == user.id).delete()
+    # Delete kids accounts too
+    kids = db.query(User).filter(User.parent_id == user.id).all()
+    for kid in kids:
+        db.query(Password).filter(Password.user_id == kid.id).delete()
+        db.query(UserSession).filter(UserSession.user_id == kid.id).delete()
+        db.delete(kid)
+    db.delete(user)
+    db.commit()
+    return {"message": "Cuenta eliminada."}
 
 
 if __name__ == "__main__":

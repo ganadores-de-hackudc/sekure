@@ -228,3 +228,22 @@ export const getKidsVaultEntry = (kidId: number, entryId: number) =>
     request<VaultEntryWithPassword>(`/kids/accounts/${kidId}/vault/${entryId}`);
 export const deleteKidsVaultEntry = (kidId: number, entryId: number) =>
     request<{ message: string }>(`/kids/accounts/${kidId}/vault/${entryId}`, { method: 'DELETE' });
+
+// ==================== PROFILE ====================
+export const changeUsername = (newUsername: string, currentPassword: string) =>
+    request<{ message: string; username: string }>('/profile/username', {
+        method: 'PUT',
+        body: JSON.stringify({ new_username: newUsername, current_password: currentPassword }),
+    });
+
+export const changePassword = (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>('/profile/password', {
+        method: 'PUT',
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+
+export const deleteAccount = (currentPassword: string) =>
+    request<{ message: string }>('/profile', {
+        method: 'DELETE',
+        body: JSON.stringify({ current_password: currentPassword }),
+    });

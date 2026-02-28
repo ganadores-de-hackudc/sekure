@@ -189,3 +189,18 @@ class KidsAccountOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Profile ---
+class ChangeUsername(BaseModel):
+    new_username: str
+    current_password: str
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class DeleteAccount(BaseModel):
+    current_password: str
