@@ -1,7 +1,7 @@
 #  Sekure — Gestor de Contraseñas Seguro
 
 <p align="center">
-  <img src="frontend/public/favicon.svg" width="80" alt="Sekure logo" />
+  <img src="frontend/public/sekure-longlogo.svg" width="300" alt="Sekure logo" />
 </p>
 
 **Sekure** es un gestor de contraseñas web moderno y seguro que permite generar, verificar, almacenar y organizar contraseñas de forma sencilla.
