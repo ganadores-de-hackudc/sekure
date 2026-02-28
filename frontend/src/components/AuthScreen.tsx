@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { register, login } from '../api';
 import { useTheme } from '../ThemeContext';
+import { useLanguage, LANGUAGES } from '../i18n';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, ArrowRight, UserPlus, LogIn, Moon, Sun } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, UserPlus, LogIn, Moon, Sun, Globe, ChevronDown } from 'lucide-react';
+import { useRef, useEffect } from 'react';
 
 type AuthMode = 'login' | 'register';
 
@@ -17,7 +19,22 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [langOpen, setLangOpen] = useState(false);
+    const langRef = useRef<HTMLDivElement>(null);
     const { theme, toggleTheme } = useTheme();
+    const { lang, setLang, t } = useLanguage();
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (langRef.current && !langRef.current.contains(e.target as Node)) {
+                setLangOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const currentLang = LANGUAGES.find(l => l.code === lang)!;
 
     const switchMode = (m: AuthMode) => {
         setMode(m);
@@ -32,15 +49,15 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
         if (mode === 'register') {
             if (password !== confirmPassword) {
-                toast.error('Las contraseñas no coinciden');
+                toast.error(t('auth.passwords_mismatch'));
                 return;
             }
             if (password.length < 8) {
-                toast.error('La contraseña debe tener al menos 8 caracteres');
+                toast.error(t('auth.password_min_length'));
                 return;
             }
             if (username.trim().length < 3) {
-                toast.error('El nombre de usuario debe tener al menos 3 caracteres');
+                toast.error(t('auth.username_min_length'));
                 return;
             }
         }
@@ -49,10 +66,10 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         try {
             if (mode === 'login') {
                 await login(username.trim(), password);
-                toast.success('Sesión iniciada');
+                toast.success(t('auth.login_success'));
             } else {
                 await register(username.trim(), password);
-                toast.success('Cuenta creada correctamente');
+                toast.success(t('auth.register_success'));
             }
             onAuthenticated();
         } catch (err: any) {
@@ -64,14 +81,48 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-beige-100 dark:bg-gray-950 relative">
-            {/* Theme toggle - top right */}
-            <button
-                onClick={toggleTheme}
-                className="fixed top-4 right-4 z-50 theme-toggle-btn"
-                title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
-            >
-                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
+            {/* Top right controls */}
+            <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+                {/* Language selector */}
+                <div className="relative" ref={langRef}>
+                    <button
+                        onClick={() => setLangOpen(!langOpen)}
+                        className="theme-toggle-btn flex items-center gap-1.5 text-sm"
+                    >
+                        <img src={currentLang.flag} alt={currentLang.label} className="w-5 h-4 rounded-sm object-cover" />
+                        <ChevronDown className={`w-3 h-3 transition-transform ${langOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {langOpen && (
+                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[140px] z-50 animate-fade-in">
+                            {LANGUAGES.map((l) => (
+                                <button
+                                    key={l.code}
+                                    onClick={() => {
+                                        setLang(l.code);
+                                        setLangOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${lang === l.code
+                                        ? 'bg-sekure-50 text-sekure-700 dark:bg-sekure-600/15 dark:text-sekure-400'
+                                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    <img src={l.flag} alt={l.label} className="w-5 h-4 rounded-sm object-cover" />
+                                    <span>{l.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Theme toggle */}
+                <button
+                    onClick={toggleTheme}
+                    className="theme-toggle-btn"
+                    title={theme === 'light' ? t('nav.dark_mode') : t('nav.light_mode')}
+                >
+                    {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                </button>
+            </div>
 
             {/* Background decoration */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -81,12 +132,10 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
             <div className="w-full max-w-md relative animate-slide-up">
                 <div className="card text-center">
-                    {/* Logo */}
                     <div className="flex justify-center mb-6">
                         <img src="/sekure-longlogo.svg" alt="Sekure" className="h-20" />
                     </div>
 
-                    {/* Tabs */}
                     <div className="flex rounded-md bg-gray-100 dark:bg-gray-800/50 p-1 mb-8">
                         <button
                             onClick={() => switchMode('login')}
@@ -96,7 +145,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                                 }`}
                         >
                             <LogIn className="w-4 h-4" />
-                            Iniciar sesión
+                            {t('auth.login')}
                         </button>
                         <button
                             onClick={() => switchMode('register')}
@@ -106,14 +155,12 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                                 }`}
                         >
                             <UserPlus className="w-4 h-4" />
-                            Registrarse
+                            {t('auth.register')}
                         </button>
                     </div>
 
                     <p className="text-gray-500 dark:text-gray-400 mb-6">
-                        {mode === 'login'
-                            ? 'Introduce tus credenciales para acceder a tu bóveda'
-                            : 'Crea una cuenta para proteger tus contraseñas'}
+                        {mode === 'login' ? t('auth.login_desc') : t('auth.register_desc')}
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,7 +168,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Nombre de usuario"
+                            placeholder={t('auth.username')}
                             className="input-field"
                             autoFocus
                         />
@@ -131,7 +178,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                                 type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Contraseña maestra"
+                                placeholder={t('auth.master_password')}
                                 className="input-field pr-12"
                             />
                             <button
@@ -148,7 +195,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                                 type={showPassword ? 'text' : 'password'}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Confirmar contraseña"
+                                placeholder={t('auth.confirm_password')}
                                 className="input-field"
                             />
                         )}
@@ -162,7 +209,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+                                    {mode === 'login' ? t('auth.login') : t('auth.create_account')}
                                     <ArrowRight className="w-4 h-4" />
                                 </>
                             )}
@@ -171,8 +218,8 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
                     {mode === 'register' && (
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
-                            Tu contraseña maestra cifra todas tus credenciales.
-                            <br />No se puede recuperar si la olvidas.
+                            {t('auth.master_warning')}
+                            <br />{t('auth.master_warning2')}
                         </p>
                     )}
                 </div>

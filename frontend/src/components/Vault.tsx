@@ -4,6 +4,7 @@ import {
     listTags, createTag, deleteTag,
 } from '../api';
 import type { VaultEntry, VaultEntryWithPassword, Tag } from '../types';
+import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
 import SaveToVaultModal from './SaveToVaultModal';
 import {
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function Vault() {
+    const { t } = useLanguage();
     const [entries, setEntries] = useState<VaultEntry[]>([]);
     const [tags, setTags] = useState<Tag[]>([]);
     const [search, setSearch] = useState('');
@@ -46,81 +48,53 @@ export default function Vault() {
         }
     }, [search, filterTag, favoritesOnly]);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const handleToggleFavorite = async (id: number) => {
-        try {
-            await toggleFavorite(id);
-            await fetchData();
-        } catch (err: any) {
-            toast.error(err.message);
-        }
+        try { await toggleFavorite(id); await fetchData(); } catch (err: any) { toast.error(err.message); }
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('¿Estás seguro de eliminar esta entrada?')) return;
+        if (!window.confirm(t('vault.confirm_delete'))) return;
         try {
             await deleteVaultEntry(id);
-            toast.success('Entrada eliminada');
+            toast.success(t('vault.deleted'));
             await fetchData();
             if (selectedEntry?.id === id) setSelectedEntry(null);
-        } catch (err: any) {
-            toast.error(err.message);
-        }
+        } catch (err: any) { toast.error(err.message); }
     };
 
     const handleShowPassword = async (id: number) => {
-        if (showPassword[id]) {
-            setShowPassword({ ...showPassword, [id]: false });
-            return;
-        }
+        if (showPassword[id]) { setShowPassword({ ...showPassword, [id]: false }); return; }
         try {
             const entry = await getVaultEntry(id);
             setDecryptedPasswords({ ...decryptedPasswords, [id]: entry.password });
             setShowPassword({ ...showPassword, [id]: true });
-        } catch (err: any) {
-            toast.error(err.message);
-        }
+        } catch (err: any) { toast.error(err.message); }
     };
 
     const handleCopyPassword = async (id: number) => {
         try {
             let pw = decryptedPasswords[id];
-            if (!pw) {
-                const entry = await getVaultEntry(id);
-                pw = entry.password;
-                setDecryptedPasswords({ ...decryptedPasswords, [id]: pw });
-            }
+            if (!pw) { const entry = await getVaultEntry(id); pw = entry.password; setDecryptedPasswords({ ...decryptedPasswords, [id]: pw }); }
             await navigator.clipboard.writeText(pw);
-            toast.success('Contraseña copiada');
-        } catch (err: any) {
-            toast.error(err.message);
-        }
+            toast.success(t('vault.password_copied'));
+        } catch (err: any) { toast.error(err.message); }
     };
 
     const handleCreateTag = async () => {
         if (!newTagName.trim()) return;
         try {
             await createTag(newTagName.trim(), newTagColor);
-            toast.success('Etiqueta creada');
+            toast.success(t('vault.tag_created'));
             setNewTagName('');
             setShowTagCreator(false);
             await fetchData();
-        } catch (err: any) {
-            toast.error(err.message);
-        }
+        } catch (err: any) { toast.error(err.message); }
     };
 
     const handleDeleteTag = async (id: number) => {
-        try {
-            await deleteTag(id);
-            if (filterTag) setFilterTag('');
-            await fetchData();
-        } catch (err: any) {
-            toast.error(err.message);
-        }
+        try { await deleteTag(id); if (filterTag) setFilterTag(''); await fetchData(); } catch (err: any) { toast.error(err.message); }
     };
 
     return (
@@ -129,256 +103,113 @@ export default function Vault() {
                 <div>
                     <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-gray-800 dark:text-white">
                         <Archive className="w-8 h-8 text-sekure-600 dark:text-sekure-500" />
-                        Bóveda
+                        {t('vault.title')}
                     </h2>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
-                        {entries.length} contraseña{entries.length !== 1 ? 's' : ''} almacenada{entries.length !== 1 ? 's' : ''}
+                        {entries.length} {entries.length !== 1 ? t('vault.count_many') : t('vault.count_one')}
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="btn-primary flex items-center gap-2"
-                >
-                    <Plus className="w-5 h-5" />
-                    Añadir
+                <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+                    <Plus className="w-5 h-5" />{t('vault.add')}
                 </button>
             </div>
 
-            {/* Search & Filters */}
             <div className="card mb-6 space-y-4">
                 <div className="flex gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Buscar por título, usuario o URL..."
-                            className="input-field pl-11"
-                        />
+                        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('vault.search')} className="input-field pl-11" />
                     </div>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`btn-secondary flex items-center gap-2 ${showFilters ? 'border-sekure-500 text-sekure-600 dark:text-sekure-400' : ''}`}
-                    >
-                        <Filter className="w-4 h-4" />
-                        <span className="hidden sm:inline">Filtros</span>
+                    <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary flex items-center gap-2 ${showFilters ? 'border-sekure-500 text-sekure-600 dark:text-sekure-400' : ''}`}>
+                        <Filter className="w-4 h-4" /><span className="hidden sm:inline">{t('vault.filters')}</span>
                     </button>
                 </div>
 
                 {showFilters && (
                     <div className="animate-fade-in space-y-3 pt-2 border-t border-gray-200 dark:border-gray-800">
                         <div className="flex items-center gap-4 flex-wrap">
-                            <button
-                                onClick={() => setFavoritesOnly(!favoritesOnly)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${favoritesOnly
-                                    ? 'bg-yellow-50 text-yellow-600 border border-yellow-300 dark:bg-yellow-600/15 dark:text-yellow-400 dark:border-yellow-600/30'
-                                    : 'bg-gray-50 text-gray-500 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
-                                    }`}
-                            >
-                                <Star className={`w-4 h-4 ${favoritesOnly ? 'fill-yellow-400' : ''}`} />
-                                Solo favoritos
+                            <button onClick={() => setFavoritesOnly(!favoritesOnly)}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${favoritesOnly ? 'bg-yellow-50 text-yellow-600 border border-yellow-300 dark:bg-yellow-600/15 dark:text-yellow-400 dark:border-yellow-600/30' : 'bg-gray-50 text-gray-500 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`}>
+                                <Star className={`w-4 h-4 ${favoritesOnly ? 'fill-yellow-400' : ''}`} />{t('vault.favorites_only')}
                             </button>
-
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm text-gray-500 dark:text-gray-400">Etiquetas:</span>
-                                <button
-                                    onClick={() => setFilterTag('')}
-                                    className={`badge border transition-colors ${!filterTag
-                                        ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400'
-                                        : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'
-                                        }`}
-                                >
-                                    Todas
+                                <span className="text-sm text-gray-500 dark:text-gray-400">{t('vault.tags')}</span>
+                                <button onClick={() => setFilterTag('')}
+                                    className={`badge border transition-colors ${!filterTag ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400' : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'}`}>
+                                    {t('vault.all')}
                                 </button>
                                 {tags.map((tag) => (
-                                    <button
-                                        key={tag.id}
-                                        onClick={() => setFilterTag(filterTag === tag.name ? '' : tag.name)}
-                                        className={`badge border transition-colors group ${filterTag === tag.name
-                                            ? 'bg-opacity-20 border-opacity-50'
-                                            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
-                                            }`}
-                                        style={{
-                                            backgroundColor: filterTag === tag.name ? `${tag.color}20` : undefined,
-                                            borderColor: filterTag === tag.name ? tag.color : undefined,
-                                            color: filterTag === tag.name ? tag.color : undefined,
-                                        }}
-                                    >
+                                    <button key={tag.id} onClick={() => setFilterTag(filterTag === tag.name ? '' : tag.name)}
+                                        className={`badge border transition-colors group ${filterTag === tag.name ? 'bg-opacity-20 border-opacity-50' : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'}`}
+                                        style={{ backgroundColor: filterTag === tag.name ? `${tag.color}20` : undefined, borderColor: filterTag === tag.name ? tag.color : undefined, color: filterTag === tag.name ? tag.color : undefined }}>
                                         {tag.name}
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteTag(tag.id);
-                                            }}
-                                            className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteTag(tag.id); }} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
                                     </button>
                                 ))}
-                                <button
-                                    onClick={() => setShowTagCreator(!showTagCreator)}
-                                    className="badge border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:border-gray-400 transition-colors"
-                                >
-                                    <Plus className="w-3 h-3 mr-1" />
-                                    Nueva
+                                <button onClick={() => setShowTagCreator(!showTagCreator)}
+                                    className="badge border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:border-gray-400 transition-colors">
+                                    <Plus className="w-3 h-3 mr-1" />{t('vault.new_tag')}
                                 </button>
                             </div>
                         </div>
-
                         {showTagCreator && (
                             <div className="flex items-center gap-2 animate-fade-in">
-                                <input
-                                    type="text"
-                                    value={newTagName}
-                                    onChange={(e) => setNewTagName(e.target.value)}
-                                    placeholder="Nombre de la etiqueta"
-                                    className="input-field py-2 text-sm flex-1"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
-                                />
+                                <input type="text" value={newTagName} onChange={(e) => setNewTagName(e.target.value)} placeholder={t('vault.tag_name')} className="input-field py-2 text-sm flex-1" onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()} />
                                 <div className="flex gap-1">
                                     {tagColors.map((color) => (
-                                        <button
-                                            key={color}
-                                            onClick={() => setNewTagColor(color)}
-                                            className={`w-6 h-6 rounded-full border-2 transition-transform ${newTagColor === color ? 'border-gray-800 dark:border-white scale-110' : 'border-transparent'
-                                                }`}
-                                            style={{ backgroundColor: color }}
-                                        />
+                                        <button key={color} onClick={() => setNewTagColor(color)} className={`w-6 h-6 rounded-full border-2 transition-transform ${newTagColor === color ? 'border-gray-800 dark:border-white scale-110' : 'border-transparent'}`} style={{ backgroundColor: color }} />
                                     ))}
                                 </div>
-                                <button onClick={handleCreateTag} className="btn-primary py-2 text-sm">
-                                    Crear
-                                </button>
+                                <button onClick={handleCreateTag} className="btn-primary py-2 text-sm">{t('vault.create')}</button>
                             </div>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Entries list */}
             {loading ? (
-                <div className="flex justify-center py-16">
-                    <div className="w-10 h-10 border-4 border-sekure-500 border-t-transparent rounded-full animate-spin" />
-                </div>
+                <div className="flex justify-center py-16"><div className="w-10 h-10 border-4 border-sekure-500 border-t-transparent rounded-full animate-spin" /></div>
             ) : entries.length === 0 ? (
                 <div className="card text-center py-16">
                     <Archive className="w-16 h-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-500 text-lg">No hay contraseñas almacenadas</p>
-                    <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">
-                        Genera una contraseña y guárdala, o añade una manualmente
-                    </p>
+                    <p className="text-gray-500 dark:text-gray-500 text-lg">{t('vault.empty')}</p>
+                    <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">{t('vault.empty_desc')}</p>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {entries.map((entry) => (
-                        <div
-                            key={entry.id}
-                            className="card-hover group"
-                        >
+                        <div key={entry.id} className="card-hover group">
                             <div className="flex items-start gap-4">
-                                {/* Icon */}
                                 <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
-                                    {entry.url ? (
-                                        <Globe className="w-6 h-6 text-gray-400 dark:text-gray-400" />
-                                    ) : (
-                                        <User className="w-6 h-6 text-gray-400 dark:text-gray-400" />
-                                    )}
+                                    {entry.url ? <Globe className="w-6 h-6 text-gray-400" /> : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
-
-                                {/* Content */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                         <h3 className="font-semibold text-gray-800 dark:text-white truncate">{entry.title}</h3>
-                                        <button
-                                            onClick={() => handleToggleFavorite(entry.id)}
-                                            className="transition-colors"
-                                        >
-                                            <Star
-                                                className={`w-4 h-4 ${entry.is_favorite
-                                                    ? 'text-yellow-400 fill-yellow-400'
-                                                    : 'text-gray-300 hover:text-yellow-400 dark:text-gray-600 dark:hover:text-yellow-400'
-                                                    }`}
-                                            />
+                                        <button onClick={() => handleToggleFavorite(entry.id)} className="transition-colors">
+                                            <Star className={`w-4 h-4 ${entry.is_favorite ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-yellow-400 dark:text-gray-600 dark:hover:text-yellow-400'}`} />
                                         </button>
                                     </div>
-
-                                    {entry.username && (
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                            <span className="text-gray-400 dark:text-gray-500">Usuario:</span> {entry.username}
-                                        </p>
-                                    )}
-                                    {entry.url && (
-                                        <p className="text-sm text-gray-400 dark:text-gray-500 truncate">
-                                            {entry.url}
-                                        </p>
-                                    )}
-
-                                    {/* Password */}
+                                    {entry.username && <p className="text-sm text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">{t('vault.user')}</span> {entry.username}</p>}
+                                    {entry.url && <p className="text-sm text-gray-400 dark:text-gray-500 truncate">{entry.url}</p>}
                                     <div className="flex items-center gap-2 mt-2">
-                                        <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300">
-                                            {showPassword[entry.id] ? decryptedPasswords[entry.id] : '•'.repeat(16)}
-                                        </span>
+                                        <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300">{showPassword[entry.id] ? decryptedPasswords[entry.id] : '•'.repeat(16)}</span>
                                     </div>
-
-                                    {/* Tags */}
                                     {entry.tags.length > 0 && (
                                         <div className="flex gap-1.5 mt-2 flex-wrap">
                                             {entry.tags.map((tag) => (
-                                                <span
-                                                    key={tag.id}
-                                                    className="badge text-[10px]"
-                                                    style={{
-                                                        backgroundColor: `${tag.color}20`,
-                                                        color: tag.color,
-                                                    }}
-                                                >
-                                                    {tag.name}
-                                                </span>
+                                                <span key={tag.id} className="badge text-[10px]" style={{ backgroundColor: `${tag.color}20`, color: tag.color }}>{tag.name}</span>
                                             ))}
                                         </div>
                                     )}
                                 </div>
-
-                                {/* Actions */}
                                 <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                    <button
-                                        onClick={() => handleShowPassword(entry.id)}
-                                        className="btn-ghost p-2"
-                                        title={showPassword[entry.id] ? 'Ocultar' : 'Mostrar'}
-                                    >
-                                        {showPassword[entry.id] ? (
-                                            <EyeOff className="w-4 h-4" />
-                                        ) : (
-                                            <Eye className="w-4 h-4" />
-                                        )}
+                                    <button onClick={() => handleShowPassword(entry.id)} className="btn-ghost p-2" title={showPassword[entry.id] ? t('vault.hide') : t('vault.show')}>
+                                        {showPassword[entry.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
-                                    <button
-                                        onClick={() => handleCopyPassword(entry.id)}
-                                        className="btn-ghost p-2"
-                                        title="Copiar contraseña"
-                                    >
-                                        <Copy className="w-4 h-4" />
-                                    </button>
-                                    {entry.url && (
-                                        <a
-                                            href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="btn-ghost p-2"
-                                            title="Abrir URL"
-                                        >
-                                            <ExternalLink className="w-4 h-4" />
-                                        </a>
-                                    )}
-                                    <button
-                                        onClick={() => handleDelete(entry.id)}
-                                        className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
-                                        title="Eliminar"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    <button onClick={() => handleCopyPassword(entry.id)} className="btn-ghost p-2" title={t('vault.copy')}><Copy className="w-4 h-4" /></button>
+                                    {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
+                                    <button onClick={() => handleDelete(entry.id)} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>
                                 </div>
                             </div>
                         </div>
@@ -386,14 +217,7 @@ export default function Vault() {
                 </div>
             )}
 
-            {showAddModal && (
-                <SaveToVaultModal
-                    onClose={() => {
-                        setShowAddModal(false);
-                        fetchData();
-                    }}
-                />
-            )}
+            {showAddModal && <SaveToVaultModal onClose={() => { setShowAddModal(false); fetchData(); }} />}
         </div>
     );
 }

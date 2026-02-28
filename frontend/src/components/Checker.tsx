@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { checkPassword } from '../api';
 import type { CheckResponse } from '../types';
 import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
 import EntropyChart from './EntropyChart';
 import {
@@ -20,10 +21,11 @@ export default function Checker() {
     const [result, setResult] = useState<CheckResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const { theme } = useTheme();
+    const { t } = useLanguage();
 
     const handleCheck = async () => {
         if (!password) {
-            toast.error('Introduce una contraseña');
+            toast.error(t('check.enter_password'));
             return;
         }
         setLoading(true);
@@ -63,14 +65,18 @@ export default function Checker() {
         }
     };
 
+    const charDistNames: Record<string, string> = {
+        lowercase: t('check.lowercase'),
+        uppercase: t('check.uppercase'),
+        digits: t('check.digits_label'),
+        symbols: t('check.symbols_label'),
+    };
+
     const pieData = result
         ? Object.entries(result.char_distribution)
             .filter(([_, v]) => v > 0)
             .map(([name, value]) => ({
-                name: name === 'lowercase' ? 'Minúsculas' :
-                    name === 'uppercase' ? 'Mayúsculas' :
-                        name === 'digits' ? 'Números' :
-                            name === 'symbols' ? 'Símbolos' : 'Otros',
+                name: charDistNames[name] || t('check.other'),
                 value,
             }))
         : [];
@@ -87,64 +93,35 @@ export default function Checker() {
             <div className="mb-8">
                 <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-gray-800 dark:text-white">
                     <ShieldCheck className="w-8 h-8 text-sekure-600 dark:text-sekure-500" />
-                    Verificador de Contraseñas
+                    {t('check.title')}
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 mt-2">
-                    Analiza la fortaleza de tu contraseña y comprueba si ha sido filtrada
-                </p>
+                <p className="text-gray-500 dark:text-gray-400 mt-2">{t('check.subtitle')}</p>
             </div>
 
-            {/* Input */}
             <div className="card mb-6">
                 <div className="flex gap-3">
                     <div className="relative flex-1">
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Introduce la contraseña a verificar..."
-                            className="input-field pr-12 font-mono-password"
-                        />
-                        <button
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                        >
+                        <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyDown} placeholder={t('check.placeholder')} className="input-field pr-12 font-mono-password" />
+                        <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors">
                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                     </div>
-                    <button
-                        onClick={handleCheck}
-                        disabled={loading || !password}
-                        className="btn-primary flex items-center gap-2"
-                    >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                <Search className="w-5 h-5" />
-                                <span className="hidden sm:inline">Verificar</span>
-                            </>
-                        )}
+                    <button onClick={handleCheck} disabled={loading || !password} className="btn-primary flex items-center gap-2">
+                        {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Search className="w-5 h-5" /><span className="hidden sm:inline">{t('check.verify')}</span></>}
                     </button>
                 </div>
             </div>
 
             {result && (
                 <div className="animate-fade-in space-y-6">
-                    {/* Breach alert */}
                     {result.is_breached && (
                         <div className="card border-red-300 bg-red-50 dark:border-red-600/50 dark:bg-red-600/10">
                             <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 bg-red-100 dark:bg-red-600/20 rounded-md flex items-center justify-center flex-shrink-0">
-                                    <AlertTriangle className="w-6 h-6 text-red-500 dark:text-red-400" />
-                                </div>
+                                <div className="w-12 h-12 bg-red-100 dark:bg-red-600/20 rounded-md flex items-center justify-center flex-shrink-0"><AlertTriangle className="w-6 h-6 text-red-500 dark:text-red-400" /></div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-red-600 dark:text-red-400">¡Contraseña filtrada!</h3>
+                                    <h3 className="text-lg font-bold text-red-600 dark:text-red-400">{t('check.breached')}</h3>
                                     <p className="text-red-600/80 dark:text-red-300/80 mt-1">
-                                        Esta contraseña ha aparecido en{' '}
-                                        <span className="font-bold text-red-600 dark:text-red-300">{result.breach_count.toLocaleString()}</span>{' '}
-                                        filtraciones de datos conocidas. ¡Cámbiala inmediatamente!
+                                        {t('check.breached_desc_pre')}<span className="font-bold text-red-600 dark:text-red-300">{result.breach_count.toLocaleString()}</span>{t('check.breached_desc_post')}
                                     </p>
                                 </div>
                             </div>
@@ -154,53 +131,41 @@ export default function Checker() {
                     {!result.is_breached && (
                         <div className="card border-sekure-200 bg-sekure-50 dark:border-sekure-600/30 dark:bg-sekure-600/5">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-sekure-100 dark:bg-sekure-600/20 rounded-md flex items-center justify-center flex-shrink-0">
-                                    <CheckCircle2 className="w-6 h-6 text-sekure-600 dark:text-sekure-400" />
-                                </div>
+                                <div className="w-12 h-12 bg-sekure-100 dark:bg-sekure-600/20 rounded-md flex items-center justify-center flex-shrink-0"><CheckCircle2 className="w-6 h-6 text-sekure-600 dark:text-sekure-400" /></div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-sekure-700 dark:text-sekure-400">No encontrada en filtraciones</h3>
-                                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                                        Esta contraseña no aparece en bases de datos de filtraciones conocidas.
-                                    </p>
+                                    <h3 className="text-lg font-bold text-sekure-700 dark:text-sekure-400">{t('check.safe')}</h3>
+                                    <p className="text-gray-600 dark:text-gray-400 mt-1">{t('check.safe_desc')}</p>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     <div className="grid gap-6 lg:grid-cols-2">
-                        {/* Strength overview */}
                         <div className="card space-y-5">
-                            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Fortaleza</h3>
-
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{t('check.strength')}</h3>
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className={`text-xl font-bold ${strengthColor(result.strength_score)}`}>
-                                        {result.strength}
-                                    </span>
+                                    <span className={`text-xl font-bold ${strengthColor(result.strength_score)}`}>{result.strength}</span>
                                     <span className="text-gray-500 dark:text-gray-400">{result.strength_score}/4</span>
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-4 overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-700 ${strengthBg(result.strength_score)}`}
-                                        style={{ width: `${(result.strength_score + 1) * 20}%` }}
-                                    />
+                                    <div className={`h-full rounded-full transition-all duration-700 ${strengthBg(result.strength_score)}`} style={{ width: `${(result.strength_score + 1) * 20}%` }} />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Entropía</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('gen.entropy')}</p>
                                     <p className="text-xl font-bold text-sekure-600 dark:text-sekure-400">{result.entropy} bits</p>
                                 </div>
                                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Crackeo estimado</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('check.estimated_crack')}</p>
                                     <p className="text-lg font-bold text-gray-800 dark:text-white truncate">{result.crack_time}</p>
                                 </div>
                             </div>
 
-                            {/* Feedback */}
                             <div className="space-y-2">
-                                <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300">Recomendaciones</h4>
+                                <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('check.recommendations')}</h4>
                                 {result.feedback.map((msg, i) => (
                                     <div key={i} className="flex items-start gap-2 text-sm">
                                         {msg.includes('⚠️') || msg.includes('Evita') || msg.includes('Añade') || msg.includes('corta') || msg.includes('Considera') ? (
@@ -214,42 +179,23 @@ export default function Checker() {
                             </div>
                         </div>
 
-                        {/* Charts */}
                         <div className="space-y-6">
-                            {/* Character distribution */}
                             <div className="card">
-                                <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Distribución de caracteres</h3>
+                                <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('check.char_distribution')}</h3>
                                 {pieData.length > 0 && (
                                     <div className="flex items-center gap-4">
                                         <div className="w-40 h-40">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={pieData}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={30}
-                                                        outerRadius={60}
-                                                        paddingAngle={3}
-                                                        dataKey="value"
-                                                        stroke="none"
-                                                    >
-                                                        {pieData.map((_, index) => (
-                                                            <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip contentStyle={tooltipStyle} />
-                                                </PieChart>
+                                                <PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={30} outerRadius={60} paddingAngle={3} dataKey="value" stroke="none">
+                                                    {pieData.map((_, index) => (<Cell key={index} fill={COLORS[index % COLORS.length]} />))}
+                                                </Pie><Tooltip contentStyle={tooltipStyle} /></PieChart>
                                             </ResponsiveContainer>
                                         </div>
                                         <div className="space-y-2 flex-1">
                                             {pieData.map((item, index) => (
                                                 <div key={item.name} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <div
-                                                            className="w-3 h-3 rounded-full"
-                                                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                                                        />
+                                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                                                         <span className="text-sm text-gray-600 dark:text-gray-300">{item.name}</span>
                                                     </div>
                                                     <span className="text-sm font-mono text-gray-500 dark:text-gray-400">{item.value}</span>
@@ -259,10 +205,8 @@ export default function Checker() {
                                     </div>
                                 )}
                             </div>
-
-                            {/* Entropy chart */}
                             <div className="card">
-                                <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Entropía acumulada</h3>
+                                <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('check.cumulative_entropy')}</h3>
                                 <EntropyChart data={result.entropy_breakdown} />
                             </div>
                         </div>

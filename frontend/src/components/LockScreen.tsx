@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { setupMaster, unlockVault } from '../api';
 import { useTheme } from '../ThemeContext';
+import { useLanguage, LANGUAGES } from '../i18n';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, ArrowRight, Moon, Sun } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Moon, Sun, Globe, ChevronDown } from 'lucide-react';
 
 interface LockScreenProps {
     isSetup: boolean;
@@ -14,19 +15,34 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [langOpen, setLangOpen] = useState(false);
+    const langRef = useRef<HTMLDivElement>(null);
     const { theme, toggleTheme } = useTheme();
+    const { lang, setLang, t } = useLanguage();
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (langRef.current && !langRef.current.contains(e.target as Node)) {
+                setLangOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const currentLang = LANGUAGES.find(l => l.code === lang)!;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!password) return;
 
         if (!isSetup && password !== confirmPassword) {
-            toast.error('Las contraseñas no coinciden');
+            toast.error(t('auth.passwords_mismatch'));
             return;
         }
 
         if (!isSetup && password.length < 8) {
-            toast.error('La contraseña maestra debe tener al menos 8 caracteres');
+            toast.error(t('lock.master_min_length'));
             return;
         }
 
@@ -34,10 +50,10 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
         try {
             if (isSetup) {
                 await unlockVault(password);
-                toast.success('Bóveda desbloqueada');
+                toast.success(t('lock.unlocked'));
             } else {
                 await setupMaster(password);
-                toast.success('Contraseña maestra configurada');
+                toast.success(t('lock.master_configured'));
             }
             onUnlocked();
         } catch (err: any) {
@@ -49,16 +65,46 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-beige-100 dark:bg-gray-950 relative">
-            {/* Theme toggle - top right */}
-            <button
-                onClick={toggleTheme}
-                className="fixed top-4 right-4 z-50 theme-toggle-btn"
-                title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
-            >
-                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
+            {/* Top right controls */}
+            <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+                <div className="relative" ref={langRef}>
+                    <button
+                        onClick={() => setLangOpen(!langOpen)}
+                        className="theme-toggle-btn flex items-center gap-1.5 text-sm"
+                    >
+                        <img src={currentLang.flag} alt={currentLang.label} className="w-5 h-4 rounded-sm object-cover" />
+                        <ChevronDown className={`w-3 h-3 transition-transform ${langOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {langOpen && (
+                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[140px] z-50 animate-fade-in">
+                            {LANGUAGES.map((l) => (
+                                <button
+                                    key={l.code}
+                                    onClick={() => {
+                                        setLang(l.code);
+                                        setLangOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${lang === l.code
+                                        ? 'bg-sekure-50 text-sekure-700 dark:bg-sekure-600/15 dark:text-sekure-400'
+                                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    <img src={l.flag} alt={l.label} className="w-5 h-4 rounded-sm object-cover" />
+                                    <span>{l.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <button
+                    onClick={toggleTheme}
+                    className="theme-toggle-btn"
+                    title={theme === 'light' ? t('nav.dark_mode') : t('nav.light_mode')}
+                >
+                    {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                </button>
+            </div>
 
-            {/* Background decoration */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sekure-200/30 dark:bg-sekure-600/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-beige-300/40 dark:bg-sekure-500/5 rounded-full blur-3xl" />
@@ -66,14 +112,11 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
 
             <div className="w-full max-w-md relative animate-slide-up">
                 <div className="card text-center">
-                    {/* Logo */}
                     <div className="flex justify-center mb-6">
                         <img src="/sekure-longlogo.svg" alt="Sekure" className="h-25" />
                     </div>
                     <p className="text-gray-500 dark:text-gray-400 mb-8">
-                        {isSetup
-                            ? 'Introduce tu contraseña maestra para desbloquear'
-                            : 'Crea una contraseña maestra para proteger tu bóveda'}
+                        {isSetup ? t('lock.unlock_desc') : t('lock.setup_desc')}
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,7 +125,7 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
                                 type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Contraseña maestra"
+                                placeholder={t('auth.master_password')}
                                 className="input-field pr-12"
                                 autoFocus
                             />
@@ -100,7 +143,7 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
                                 type={showPassword ? 'text' : 'password'}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Confirmar contraseña maestra"
+                                placeholder={t('lock.confirm_master')}
                                 className="input-field"
                             />
                         )}
@@ -114,7 +157,7 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    {isSetup ? 'Desbloquear' : 'Crear contraseña maestra'}
+                                    {isSetup ? t('lock.unlock') : t('lock.create_master')}
                                     <ArrowRight className="w-4 h-4" />
                                 </>
                             )}
@@ -123,8 +166,8 @@ export default function LockScreen({ isSetup, onUnlocked }: LockScreenProps) {
 
                     {!isSetup && (
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
-                            Esta contraseña cifra todas tus credenciales almacenadas.
-                            <br />No se puede recuperar si la olvidas.
+                            {t('lock.encrypts_warning')}
+                            <br />{t('auth.master_warning2')}
                         </p>
                     )}
                 </div>
