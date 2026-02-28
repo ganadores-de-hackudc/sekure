@@ -1,16 +1,17 @@
 """
-Sekure - Secure Password Manager API
+Sekure - Secure Password Manager API (Multi-user)
 """
 import base64
+import secrets
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Header, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import engine, get_db, Base
-from models import MasterConfig, Password, Tag, password_tags
+from models import User, Password, Tag, password_tags
 from schemas import (
-    MasterSetup, MasterUnlock,
+    UserRegister, UserLogin,
     TagCreate, TagOut,
     GenerateRequest, GenerateResponse,
     CheckRequest, CheckResponse,
@@ -26,11 +27,8 @@ from password_utils import (
     analyze_password, check_hibp,
 )
 
-# --- In-memory session store (for hackathon simplicity) ---
-_session: dict = {
-    "unlocked": False,
-    "key": None,  # Derived encryption key (bytes)
-}
+# --- In-memory session store: token -> {user_id, username, key} ---
+_sessions: dict[str, dict] = {}
 
 
 @asynccontextmanager
@@ -41,8 +39,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sekure API",
-    description="Gestor de contraseñas seguro",
-    version="1.0.0",
+    description="Gestor de contraseñas seguro — multi-usuario",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -55,75 +53,85 @@ app.add_middleware(
 )
 
 
-# --- Helpers ---
-def require_unlocked():
-    if not _session["unlocked"] or _session["key"] is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vault está bloqueado. Desbloquea con tu contraseña maestra.",
-        )
-    return _session["key"]
+# --- Auth dependency ---
+def get_current_session(authorization: str = Header(default="")):
+    """Extract and validate the Bearer token, returning session data."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No autenticado. Inicia sesión.")
+    token = authorization.removeprefix("Bearer ")
+    session_data = _sessions.get(token)
+    if not session_data:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sesión inválida o expirada.")
+    return {"token": token, **session_data}
 
 
 # ==================== AUTH ====================
 
 @app.get("/api/auth/status")
-def auth_status(db: Session = Depends(get_db)):
-    config = db.query(MasterConfig).first()
+def auth_status(authorization: str = Header(default="")):
+    if not authorization.startswith("Bearer "):
+        return {"authenticated": False}
+    token = authorization.removeprefix("Bearer ")
+    session_data = _sessions.get(token)
+    if not session_data:
+        return {"authenticated": False}
     return {
-        "is_setup": config is not None,
-        "is_unlocked": _session["unlocked"],
+        "authenticated": True,
+        "user": {"id": session_data["user_id"], "username": session_data["username"]},
     }
 
 
-@app.post("/api/auth/setup")
-def setup_master(data: MasterSetup, db: Session = Depends(get_db)):
-    existing = db.query(MasterConfig).first()
-    if existing:
-        raise HTTPException(400, "La contraseña maestra ya está configurada.")
-
+@app.post("/api/auth/register")
+def register_user(data: UserRegister, db: Session = Depends(get_db)):
+    if len(data.username.strip()) < 3:
+        raise HTTPException(400, "El nombre de usuario debe tener al menos 3 caracteres.")
     if len(data.master_password) < 8:
-        raise HTTPException(400, "La contraseña maestra debe tener al menos 8 caracteres.")
+        raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres.")
+
+    existing = db.query(User).filter(User.username == data.username.strip()).first()
+    if existing:
+        raise HTTPException(400, "El nombre de usuario ya está en uso.")
 
     salt = generate_salt()
-    master_hash = hash_master_password(data.master_password, salt)
+    password_hash = hash_master_password(data.master_password, salt)
     key = derive_key(data.master_password, salt)
 
-    config = MasterConfig(
-        master_hash=master_hash,
+    user = User(
+        username=data.username.strip(),
+        password_hash=password_hash,
         salt=base64.b64encode(salt).decode("utf-8"),
     )
-    db.add(config)
+    db.add(user)
     db.commit()
+    db.refresh(user)
 
-    _session["unlocked"] = True
-    _session["key"] = key
+    token = secrets.token_urlsafe(32)
+    _sessions[token] = {"user_id": user.id, "username": user.username, "key": key}
 
-    return {"message": "Contraseña maestra configurada correctamente."}
+    return {"token": token, "user": {"id": user.id, "username": user.username}}
 
 
-@app.post("/api/auth/unlock")
-def unlock_vault(data: MasterUnlock, db: Session = Depends(get_db)):
-    config = db.query(MasterConfig).first()
-    if not config:
-        raise HTTPException(400, "No hay contraseña maestra configurada.")
+@app.post("/api/auth/login")
+def login_user(data: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == data.username.strip()).first()
+    if not user:
+        raise HTTPException(401, "Usuario o contraseña incorrectos.")
 
-    salt = base64.b64decode(config.salt)
-    if not verify_master_password(data.master_password, salt, config.master_hash):
-        raise HTTPException(401, "Contraseña maestra incorrecta.")
+    salt = base64.b64decode(user.salt)
+    if not verify_master_password(data.master_password, salt, user.password_hash):
+        raise HTTPException(401, "Usuario o contraseña incorrectos.")
 
     key = derive_key(data.master_password, salt)
-    _session["unlocked"] = True
-    _session["key"] = key
+    token = secrets.token_urlsafe(32)
+    _sessions[token] = {"user_id": user.id, "username": user.username, "key": key}
 
-    return {"message": "Vault desbloqueado correctamente."}
+    return {"token": token, "user": {"id": user.id, "username": user.username}}
 
 
-@app.post("/api/auth/lock")
-def lock_vault():
-    _session["unlocked"] = False
-    _session["key"] = None
-    return {"message": "Vault bloqueado."}
+@app.post("/api/auth/logout")
+def logout_user(session=Depends(get_current_session)):
+    _sessions.pop(session["token"], None)
+    return {"message": "Sesión cerrada."}
 
 
 # ==================== PASSWORD GENERATION ====================
@@ -188,10 +196,11 @@ def list_vault(
     search: str = "",
     tag: str = "",
     favorites_only: bool = False,
+    session=Depends(get_current_session),
     db: Session = Depends(get_db),
 ):
-    require_unlocked()
-    query = db.query(Password)
+    user_id = session["user_id"]
+    query = db.query(Password).filter(Password.user_id == user_id)
 
     if search:
         query = query.filter(
@@ -209,12 +218,18 @@ def list_vault(
 
 
 @app.post("/api/vault", response_model=VaultEntryOut, status_code=201)
-def create_vault_entry(data: VaultEntryCreate, db: Session = Depends(get_db)):
-    key = require_unlocked()
+def create_vault_entry(
+    data: VaultEntryCreate,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    key = session["key"]
+    user_id = session["user_id"]
 
     encrypted, iv = encrypt_password(data.password, key)
 
     entry = Password(
+        user_id=user_id,
         title=data.title,
         username=data.username or "",
         url=data.url or "",
@@ -225,7 +240,7 @@ def create_vault_entry(data: VaultEntryCreate, db: Session = Depends(get_db)):
     )
 
     if data.tag_ids:
-        tags = db.query(Tag).filter(Tag.id.in_(data.tag_ids)).all()
+        tags = db.query(Tag).filter(Tag.id.in_(data.tag_ids), Tag.user_id == user_id).all()
         entry.tags = tags
 
     db.add(entry)
@@ -235,10 +250,15 @@ def create_vault_entry(data: VaultEntryCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/api/vault/{entry_id}", response_model=VaultEntryWithPassword)
-def get_vault_entry(entry_id: int, db: Session = Depends(get_db)):
-    key = require_unlocked()
+def get_vault_entry(
+    entry_id: int,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    key = session["key"]
+    user_id = session["user_id"]
 
-    entry = db.query(Password).filter(Password.id == entry_id).first()
+    entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 
@@ -259,10 +279,16 @@ def get_vault_entry(entry_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/api/vault/{entry_id}", response_model=VaultEntryOut)
-def update_vault_entry(entry_id: int, data: VaultEntryUpdate, db: Session = Depends(get_db)):
-    key = require_unlocked()
+def update_vault_entry(
+    entry_id: int,
+    data: VaultEntryUpdate,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    key = session["key"]
+    user_id = session["user_id"]
 
-    entry = db.query(Password).filter(Password.id == entry_id).first()
+    entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 
@@ -281,7 +307,7 @@ def update_vault_entry(entry_id: int, data: VaultEntryUpdate, db: Session = Depe
         entry.encrypted_password = encrypted
         entry.iv = iv
     if data.tag_ids is not None:
-        tags = db.query(Tag).filter(Tag.id.in_(data.tag_ids)).all()
+        tags = db.query(Tag).filter(Tag.id.in_(data.tag_ids), Tag.user_id == user_id).all()
         entry.tags = tags
 
     db.commit()
@@ -290,10 +316,14 @@ def update_vault_entry(entry_id: int, data: VaultEntryUpdate, db: Session = Depe
 
 
 @app.delete("/api/vault/{entry_id}")
-def delete_vault_entry(entry_id: int, db: Session = Depends(get_db)):
-    require_unlocked()
+def delete_vault_entry(
+    entry_id: int,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    user_id = session["user_id"]
 
-    entry = db.query(Password).filter(Password.id == entry_id).first()
+    entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 
@@ -303,10 +333,14 @@ def delete_vault_entry(entry_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/api/vault/{entry_id}/favorite")
-def toggle_favorite(entry_id: int, db: Session = Depends(get_db)):
-    require_unlocked()
+def toggle_favorite(
+    entry_id: int,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    user_id = session["user_id"]
 
-    entry = db.query(Password).filter(Password.id == entry_id).first()
+    entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 
@@ -318,17 +352,24 @@ def toggle_favorite(entry_id: int, db: Session = Depends(get_db)):
 # ==================== TAGS ====================
 
 @app.get("/api/tags", response_model=list[TagOut])
-def list_tags(db: Session = Depends(get_db)):
-    return db.query(Tag).order_by(Tag.name).all()
+def list_tags(session=Depends(get_current_session), db: Session = Depends(get_db)):
+    user_id = session["user_id"]
+    return db.query(Tag).filter(Tag.user_id == user_id).order_by(Tag.name).all()
 
 
 @app.post("/api/tags", response_model=TagOut, status_code=201)
-def create_tag(data: TagCreate, db: Session = Depends(get_db)):
-    existing = db.query(Tag).filter(Tag.name == data.name).first()
+def create_tag(
+    data: TagCreate,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    user_id = session["user_id"]
+
+    existing = db.query(Tag).filter(Tag.user_id == user_id, Tag.name == data.name).first()
     if existing:
         raise HTTPException(400, "Ya existe una etiqueta con ese nombre.")
 
-    tag = Tag(name=data.name, color=data.color or "#9b1b2f")
+    tag = Tag(user_id=user_id, name=data.name, color=data.color or "#9b1b2f")
     db.add(tag)
     db.commit()
     db.refresh(tag)
@@ -336,8 +377,14 @@ def create_tag(data: TagCreate, db: Session = Depends(get_db)):
 
 
 @app.delete("/api/tags/{tag_id}")
-def delete_tag(tag_id: int, db: Session = Depends(get_db)):
-    tag = db.query(Tag).filter(Tag.id == tag_id).first()
+def delete_tag(
+    tag_id: int,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    user_id = session["user_id"]
+
+    tag = db.query(Tag).filter(Tag.id == tag_id, Tag.user_id == user_id).first()
     if not tag:
         raise HTTPException(404, "Etiqueta no encontrada.")
 

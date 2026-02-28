@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { lockVault } from '../api';
+import { logout } from '../api';
 import toast from 'react-hot-toast';
 import {
     KeyRound, ShieldCheck, Archive,
-    Lock, Menu, X,
+    LogOut, Menu, X, User,
 } from 'lucide-react';
 
 interface LayoutProps {
     children: React.ReactNode;
-    onLock: () => void;
+    username: string;
+    onLogout: () => void;
 }
 
 const navItems = [
@@ -18,17 +19,18 @@ const navItems = [
     { to: '/vault', icon: Archive, label: 'Bóveda' },
 ];
 
-export default function Layout({ children, onLock }: LayoutProps) {
+export default function Layout({ children, username, onLogout }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
 
-    const handleLock = async () => {
+    const handleLogout = async () => {
         try {
-            await lockVault();
-            toast.success('Bóveda bloqueada');
-            onLock();
+            await logout();
+            toast.success('Sesión cerrada');
+            onLogout();
         } catch {
-            toast.error('Error al bloquear');
+            toast.error('Error al cerrar sesión');
+            onLogout();
         }
     };
 
@@ -55,10 +57,16 @@ export default function Layout({ children, onLock }: LayoutProps) {
                     ))}
                 </nav>
 
-                <button onClick={handleLock} className="sidebar-link text-red-400 hover:text-red-300 hover:bg-red-600/10 mt-4">
-                    <Lock className="w-5 h-5" />
-                    Bloquear
-                </button>
+                <div className="border-t border-gray-800 pt-4 mt-4">
+                    <div className="flex items-center gap-2 px-4 py-2 mb-2">
+                        <User className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-400 truncate">{username}</span>
+                    </div>
+                    <button onClick={handleLogout} className="sidebar-link text-red-400 hover:text-red-300 hover:bg-red-600/10">
+                        <LogOut className="w-5 h-5" />
+                        Cerrar sesión
+                    </button>
+                </div>
             </aside>
 
             {/* Mobile sidebar overlay */}
@@ -91,10 +99,16 @@ export default function Layout({ children, onLock }: LayoutProps) {
                             ))}
                         </nav>
 
-                        <button onClick={handleLock} className="sidebar-link text-red-400 hover:text-red-300 hover:bg-red-600/10 mt-4">
-                            <Lock className="w-5 h-5" />
-                            Bloquear
-                        </button>
+                        <div className="border-t border-gray-800 pt-4 mt-4">
+                            <div className="flex items-center gap-2 px-4 py-2 mb-2">
+                                <User className="w-4 h-4 text-gray-500" />
+                                <span className="text-sm text-gray-400 truncate">{username}</span>
+                            </div>
+                            <button onClick={handleLogout} className="sidebar-link text-red-400 hover:text-red-300 hover:bg-red-600/10">
+                                <LogOut className="w-5 h-5" />
+                                Cerrar sesión
+                            </button>
+                        </div>
                     </aside>
                 </div>
             )}
@@ -110,8 +124,8 @@ export default function Layout({ children, onLock }: LayoutProps) {
                         <img src="/sekure-logo.svg" alt="Sekure" className="h-6 w-6" />
                         <span className="font-bold">Sekure</span>
                     </div>
-                    <button onClick={handleLock} className="btn-ghost text-red-400">
-                        <Lock className="w-5 h-5" />
+                    <button onClick={handleLogout} className="btn-ghost text-red-400">
+                        <LogOut className="w-5 h-5" />
                     </button>
                 </header>
 

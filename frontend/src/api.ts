@@ -6,16 +6,37 @@ import type {
     VaultEntry,
     VaultEntryWithPassword,
     AuthStatus,
+    AuthResponse,
 } from './types';
 
 const BASE = '/api';
+const TOKEN_KEY = 'sekure_token';
+
+let authToken: string | null = localStorage.getItem(TOKEN_KEY);
+
+function setToken(token: string) {
+    authToken = token;
+    localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken() {
+    authToken = null;
+    localStorage.removeItem(TOKEN_KEY);
+}
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
     const res = await fetch(`${BASE}${url}`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         ...options,
     });
     if (!res.ok) {
+        if (res.status === 401) {
+            clearToken();
+        }
         const err = await res.json().catch(() => ({ detail: 'Error desconocido' }));
         throw new Error(err.detail || `Error ${res.status}`);
     }
@@ -24,18 +45,29 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 // Auth
 export const getAuthStatus = () => request<AuthStatus>('/auth/status');
-export const setupMaster = (master_password: string) =>
-    request<{ message: string }>('/auth/setup', {
+
+export const register = async (username: string, master_password: string) => {
+    const res = await request<AuthResponse>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ master_password }),
+        body: JSON.stringify({ username, master_password }),
     });
-export const unlockVault = (master_password: string) =>
-    request<{ message: string }>('/auth/unlock', {
+    setToken(res.token);
+    return res;
+};
+
+export const login = async (username: string, master_password: string) => {
+    const res = await request<AuthResponse>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ master_password }),
+        body: JSON.stringify({ username, master_password }),
     });
-export const lockVault = () =>
-    request<{ message: string }>('/auth/lock', { method: 'POST' });
+    setToken(res.token);
+    return res;
+};
+
+export const logout = async () => {
+    await request<{ message: string }>('/auth/logout', { method: 'POST' });
+    clearToken();
+};
 
 // Password generation
 export const generatePassword = (data: GenerateRequest) =>

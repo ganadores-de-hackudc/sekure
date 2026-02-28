@@ -59,6 +59,11 @@ export interface VaultEntryWithPassword extends VaultEntry {
 }
 
 export interface AuthStatus {
-    is_setup: boolean;
-    is_unlocked: boolean;
+    authenticated: boolean;
+    user?: { id: number; username: string };
+}
+
+export interface AuthResponse {
+    token: string;
+    user: { id: number; username: string };
 }
