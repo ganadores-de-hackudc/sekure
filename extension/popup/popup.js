@@ -27,19 +27,26 @@ const toastContainer = document.getElementById('toastContainer');
 
 // ─── Clipboard helper (fallback for extension popups) ───
 async function copyToClipboard(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch {
-        // Fallback for extension popup context
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
+    if (typeof text !== 'string' || !text) {
+        throw new Error('Nada que copiar');
     }
+    // Try Clipboard API first
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+            await navigator.clipboard.writeText(text);
+            return;
+        } catch { /* fall through to fallback */ }
+    }
+    // Fallback: textarea + execCommand
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;left:-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (!ok) throw new Error('No se pudo copiar al portapapeles');
 }
 
 let allEntries = [];
@@ -111,13 +118,22 @@ async function fetchDecryptedPassword(id) {
         throw new Error('No se pudo obtener la contraseña cifrada.');
     }
     const { encryptionKey } = await chrome.storage.session.get('encryptionKey');
-    if (!encryptionKey) throw new Error('Clave no disponible. Inicia sesión de nuevo.');
-    const key = await SEKURE_CRYPTO.importKey(encryptionKey);
-    const decrypted = await SEKURE_CRYPTO.decryptPassword(entry.encrypted_password, entry.iv, key);
-    if (decrypted === undefined || decrypted === null) {
-        throw new Error('Error al descifrar la contraseña.');
+    if (!encryptionKey) {
+        // Key lost (e.g. browser restart) — force re-login
+        await chrome.storage.local.remove(['token', 'username']);
+        throw new Error('Sesión expirada. Inicia sesión de nuevo.');
     }
-    return decrypted;
+    const key = await SEKURE_CRYPTO.importKey(encryptionKey);
+    try {
+        const decrypted = await SEKURE_CRYPTO.decryptPassword(entry.encrypted_password, entry.iv, key);
+        if (decrypted === undefined || decrypted === null) {
+            throw new Error('Error al descifrar la contraseña.');
+        }
+        return decrypted;
+    } catch (cryptoErr) {
+        // Decryption failed — key probably doesn't match
+        throw new Error('Error al descifrar. Cierra sesión y vuelve a iniciar.');
+    }
 }
 
 // ─── URL matching ───
@@ -207,7 +223,11 @@ function createPasswordItem(entry, showCopyBtn = true) {
             showToast('Contraseña copiada');
         } catch (err) {
             console.error('Error al copiar contraseña:', err);
-            showToast(err.message || 'Error al copiar', 'error');
+            const msg = (err && err.message) ? err.message : 'Error al copiar';
+            if (msg.includes('Sesión expirada') || msg.includes('Cierra sesión')) {
+                showLogin();
+            }
+            showToast(msg, 'error');
         }
     });
 
@@ -227,7 +247,11 @@ function createPasswordItem(entry, showCopyBtn = true) {
                 setTimeout(() => window.close(), 600);
             }
         } catch (err) {
-            showToast(err.message, 'error');
+            const msg = (err && err.message) ? err.message : 'Error al autocompletar';
+            if (msg.includes('Sesión expirada') || msg.includes('Cierra sesión')) {
+                showLogin();
+            }
+            showToast(msg, 'error');
         }
     });
 
