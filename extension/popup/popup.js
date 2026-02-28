@@ -107,10 +107,17 @@ async function fetchVault() {
 
 async function fetchDecryptedPassword(id) {
     const entry = await apiRequest(`/vault/${id}`);
+    if (!entry || !entry.encrypted_password || !entry.iv) {
+        throw new Error('No se pudo obtener la contraseña cifrada.');
+    }
     const { encryptionKey } = await chrome.storage.session.get('encryptionKey');
     if (!encryptionKey) throw new Error('Clave no disponible. Inicia sesión de nuevo.');
     const key = await SEKURE_CRYPTO.importKey(encryptionKey);
-    return SEKURE_CRYPTO.decryptPassword(entry.encrypted_password, entry.iv, key);
+    const decrypted = await SEKURE_CRYPTO.decryptPassword(entry.encrypted_password, entry.iv, key);
+    if (decrypted === undefined || decrypted === null) {
+        throw new Error('Error al descifrar la contraseña.');
+    }
+    return decrypted;
 }
 
 // ─── URL matching ───
@@ -134,10 +141,12 @@ function createPasswordItem(entry, showCopyBtn = true) {
     const div = document.createElement('div');
     div.className = 'password-item';
 
-    const domain = entry.url ? extractDomain(entry.url) : null;
+    const rawUrl = entry.url && entry.url.startsWith('http') ? entry.url : (entry.url ? `https://${entry.url}` : '');
+    const domain = rawUrl ? extractDomain(rawUrl) : null;
+    const fallbackSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
     let iconHTML = '';
     if (domain) {
-        iconHTML = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${domain}" style="width:20px;height:20px;border-radius:4px;object-fit:contain;" onerror="this.outerHTML='<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><circle cx=\\'12\\' cy=\\'12\\' r=\\'10\\'/><line x1=\\'2\\' y1=\\'12\\' x2=\\'22\\' y2=\\'12\\'/><path d=\\'M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\\'/></svg>'"/>`;
+        iconHTML = `<img class="favicon-img" src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${domain}" style="width:20px;height:20px;border-radius:4px;object-fit:contain;"/>`;
     } else {
         iconHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
     }
@@ -168,6 +177,14 @@ function createPasswordItem(entry, showCopyBtn = true) {
         </div>
     `;
 
+    // Favicon error fallback (inline onerror blocked by MV3 CSP)
+    const faviconImg = div.querySelector('.favicon-img');
+    if (faviconImg) {
+        faviconImg.addEventListener('error', () => {
+            faviconImg.parentElement.innerHTML = fallbackSVG;
+        });
+    }
+
     // Copy username
     div.querySelector('.copy-user-btn')?.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -182,10 +199,15 @@ function createPasswordItem(entry, showCopyBtn = true) {
         e.stopPropagation();
         try {
             const pw = await fetchDecryptedPassword(entry.id);
+            if (!pw) {
+                showToast('No se pudo descifrar la contraseña', 'error');
+                return;
+            }
             await copyToClipboard(pw);
             showToast('Contraseña copiada');
         } catch (err) {
-            showToast(err.message, 'error');
+            console.error('Error al copiar contraseña:', err);
+            showToast(err.message || 'Error al copiar', 'error');
         }
     });
 
