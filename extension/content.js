@@ -131,11 +131,9 @@
             background: #fdf2f4;
             border-radius: 10px 10px 0 0;
         `;
+        const logoUrl = chrome.runtime.getURL('icons/sekure-longlogo.svg');
         header.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9b1b2f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <span style="font-size:13px; font-weight:600; color:#9b1b2f;">Sekure</span>
+            <img src="${logoUrl}" alt="Sekure" style="height:20px; width:auto;">
             <span style="font-size:11px; color:#9ca3af; margin-left:auto;">${matchingEntries.length} contraseña${matchingEntries.length !== 1 ? 's' : ''}</span>
         `;
         dropdown.appendChild(header);
