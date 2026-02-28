@@ -26,7 +26,9 @@
     // Sekure's own domains — never offer to save the master password
     const SEKURE_DOMAINS = ['sekure-woad.vercel.app', 'localhost'];
     function isSekureDomain(domain) {
-        return SEKURE_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
+        // Match exact domains, subdomains, and any sekure-*.vercel.app preview deployments
+        return SEKURE_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))
+            || /^sekure[a-z0-9-]*\.vercel\.app$/i.test(domain);
     }
 
     // ─── Utility ───
@@ -311,7 +313,7 @@
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    function captureAndPersist() {
+    async function captureAndPersist() {
         // Grab the latest credentials from all visible password fields
         let password = trackedCredentials.password;
         let username = trackedCredentials.username;
