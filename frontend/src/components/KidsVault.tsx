@@ -150,30 +150,38 @@ export default function KidsVault({ userId }: { userId: number }) {
                     <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">{t('kids.vault_empty_desc')}</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {entries.map((entry, idx) => (
-                        <div key={entry.id} className="bg-white/80 dark:bg-gray-900/60 backdrop-blur-sm rounded-2xl p-4 border border-purple-100 dark:border-purple-800/30 hover:border-purple-300 dark:hover:border-purple-600 transition-all group shadow-sm hover:shadow-md">
-                            <div className="flex items-start gap-4">
+                        <div key={entry.id} className="bg-white/80 dark:bg-gray-900/60 backdrop-blur-sm rounded-2xl p-4 border border-purple-100 dark:border-purple-800/30 hover:border-purple-300 dark:hover:border-purple-600 transition-all group shadow-sm hover:shadow-md flex flex-col h-full">
+                            <div className="flex items-start gap-4 mb-4">
                                 <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl">
                                     {getEmoji(idx)}
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="font-bold text-gray-800 dark:text-white truncate mb-1">{entry.title}</h3>
                                     {entry.username && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{entry.username}</p>}
                                     {entry.url && <p className="text-sm text-purple-400 dark:text-purple-500 truncate">{entry.url}</p>}
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300">
-                                            {showPassword[entry.id] ? decryptedPasswords[entry.id] : '●'.repeat(12)}
-                                        </span>
+                                </div>
+                            </div>
+
+                            <div className="mt-auto flex flex-col gap-3">
+                                <div className="flex items-center justify-between bg-white dark:bg-gray-800/50 p-2.5 rounded-xl border border-purple-50 dark:border-purple-900/20">
+                                    <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300 truncate">
+                                        {showPassword[entry.id] ? decryptedPasswords[entry.id] : '●'.repeat(12)}
+                                    </span>
+                                    <div className="flex items-center gap-1 ml-2">
+                                        <button onClick={() => handleShowPassword(entry.id)} className="p-1.5 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors" title={showPassword[entry.id] ? t('vault.hide') : t('vault.show')}>
+                                            {showPassword[entry.id] ? <EyeOff className="w-4 h-4 text-purple-500" /> : <Eye className="w-4 h-4 text-purple-500" />}
+                                        </button>
+                                        <button onClick={() => handleCopyPassword(entry.id)} className="p-1.5 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors" title={t('vault.copy')}>
+                                            <Copy className="w-4 h-4 text-purple-500" />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                    <button onClick={() => handleShowPassword(entry.id)} className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors" title={showPassword[entry.id] ? t('vault.hide') : t('vault.show')}>
-                                        {showPassword[entry.id] ? <EyeOff className="w-4 h-4 text-purple-500" /> : <Eye className="w-4 h-4 text-purple-500" />}
-                                    </button>
-                                    <button onClick={() => handleCopyPassword(entry.id)} className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors" title={t('vault.copy')}><Copy className="w-4 h-4 text-purple-500" /></button>
-                                    {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors" title={t('vault.open_url')}><ExternalLink className="w-4 h-4 text-purple-500" /></a>}
-                                    <button onClick={() => handleDeleteEntry(entry.id)} className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-800/30 transition-colors" title={t('vault.delete')}><Trash2 className="w-4 h-4 text-red-400" /></button>
+
+                                <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pt-3 border-t border-purple-50 dark:border-purple-900/20">
+                                    {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors" title={t('vault.open_url')}><ExternalLink className="w-4 h-4 text-purple-500" /></a>}
+                                    <button onClick={() => handleDeleteEntry(entry.id)} className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-800/30 transition-colors" title={t('vault.delete')}><Trash2 className="w-4 h-4 text-red-400" /></button>
                                 </div>
                             </div>
                         </div>

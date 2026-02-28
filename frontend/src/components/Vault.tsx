@@ -196,42 +196,53 @@ export default function Vault() {
                     <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">{t('vault.empty_desc')}</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {entries.map((entry) => (
-                        <div key={entry.id} className="card-hover group">
-                            <div className="flex items-start gap-4">
+                        <div key={entry.id} className="card-hover group flex flex-col h-full">
+                            <div className="flex items-start gap-4 mb-4">
                                 <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
                                     {entry.url ? <Globe className="w-6 h-6 text-gray-400" /> : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-semibold text-gray-800 dark:text-white truncate">{entry.title}</h3>
-                                        <button onClick={() => handleToggleFavorite(entry.id)} className="transition-colors">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <h3 className="font-semibold text-gray-800 dark:text-white truncate pr-2">{entry.title}</h3>
+                                        <button onClick={() => handleToggleFavorite(entry.id)} className="transition-colors flex-shrink-0">
                                             <Star className={`w-4 h-4 ${entry.is_favorite ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-yellow-400 dark:text-gray-600 dark:hover:text-yellow-400'}`} />
                                         </button>
                                     </div>
                                     {entry.username && <p className="text-sm text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">{t('vault.user')}</span> {entry.username}</p>}
                                     {entry.url && <p className="text-sm text-gray-400 dark:text-gray-500 truncate">{entry.url}</p>}
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300">{showPassword[entry.id] ? decryptedPasswords[entry.id] : '•'.repeat(16)}</span>
-                                    </div>
-                                    {entry.tags.length > 0 && (
-                                        <div className="flex gap-1.5 mt-2 flex-wrap">
-                                            {entry.tags.map((tag) => (
-                                                <span key={tag.id} className="badge text-[10px]" style={{ backgroundColor: `${tag.color}20`, color: tag.color }}>{tag.name}</span>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
-                                <div className="flex items-center flex-wrap gap-0.5 sm:gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 max-w-[90px] sm:max-w-none justify-end">
-                                    <button onClick={() => handleShowPassword(entry.id)} className="btn-ghost p-1.5 sm:p-2" title={showPassword[entry.id] ? t('vault.hide') : t('vault.show')}>
-                                        {showPassword[entry.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
-                                    <button onClick={() => handleCopyPassword(entry.id)} className="btn-ghost p-1.5 sm:p-2" title={t('vault.copy')}><Copy className="w-4 h-4" /></button>
-                                    <button onClick={() => handleEdit(entry.id)} className="btn-ghost p-1.5 sm:p-2" title={t('vault.edit')}><Pencil className="w-4 h-4" /></button>
-                                    <button onClick={() => setShareEntry(entry)} className="btn-ghost p-1.5 sm:p-2" title={t('share.title')}><Share2 className="w-4 h-4" /></button>
-                                    {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-1.5 sm:p-2" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
-                                    <button onClick={() => handleDelete(entry.id)} className="btn-ghost p-1.5 sm:p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>
+                            </div>
+
+                            <div className="mt-auto flex flex-col gap-3">
+                                <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-md border border-gray-100 dark:border-gray-700/50">
+                                    <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300 truncate">
+                                        {showPassword[entry.id] ? decryptedPasswords[entry.id] : '•'.repeat(16)}
+                                    </span>
+                                    <div className="flex items-center gap-1 ml-2">
+                                        <button onClick={() => handleShowPassword(entry.id)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1" title={showPassword[entry.id] ? t('vault.hide') : t('vault.show')}>
+                                            {showPassword[entry.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                        <button onClick={() => handleCopyPassword(entry.id)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1" title={t('vault.copy')}>
+                                            <Copy className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {entry.tags.length > 0 && (
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {entry.tags.map((tag) => (
+                                            <span key={tag.id} className="badge text-[10px]" style={{ backgroundColor: `${tag.color}20`, color: tag.color }}>{tag.name}</span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pt-3 border-t border-gray-100 dark:border-gray-800">
+                                    <button onClick={() => handleEdit(entry.id)} className="btn-ghost p-1.5" title={t('vault.edit')}><Pencil className="w-4 h-4" /></button>
+                                    <button onClick={() => setShareEntry(entry)} className="btn-ghost p-1.5" title={t('share.title')}><Share2 className="w-4 h-4" /></button>
+                                    {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-1.5" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
+                                    <button onClick={() => handleDelete(entry.id)} className="btn-ghost p-1.5 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>
                                 </div>
                             </div>
                         </div>

@@ -428,35 +428,45 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                     <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">{t('groups.vault_empty_desc')}</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {entries.map(entry => (
-                        <div key={entry.id} className="card-hover group">
-                            <div className="flex items-start gap-4">
+                        <div key={entry.id} className="card-hover group flex flex-col h-full">
+                            <div className="flex items-start gap-4 mb-4">
                                 <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
                                     {entry.url ? <Globe className="w-6 h-6 text-gray-400" /> : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="font-semibold text-gray-800 dark:text-white truncate mb-1">{entry.title}</h3>
                                     {entry.username && <p className="text-sm text-gray-500 dark:text-gray-400 truncate"><span className="text-gray-400 dark:text-gray-500">{t('vault.user')}</span> {entry.username}</p>}
                                     {entry.url && <p className="text-sm text-gray-400 dark:text-gray-500 truncate">{entry.url}</p>}
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300">
+                                </div>
+                            </div>
+
+                            <div className="mt-auto flex flex-col gap-3">
+                                <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-md border border-gray-100 dark:border-gray-700/50">
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300 truncate">
                                             {showPassword[entry.id] ? decryptedPasswords[entry.id] : '•'.repeat(16)}
                                         </span>
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-0.5 truncate">
+                                            {t('groups.added_by')} {entry.added_by_username}
+                                        </p>
                                     </div>
-                                    <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
-                                        {t('groups.added_by')} {entry.added_by_username}
-                                    </p>
+                                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                                        <button onClick={() => handleShowPassword(entry.id)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1" title={showPassword[entry.id] ? t('vault.hide') : t('vault.show')}>
+                                            {showPassword[entry.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                        <button onClick={() => handleCopyPassword(entry.id)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1" title={t('vault.copy')}>
+                                            <Copy className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                    <button onClick={() => handleShowPassword(entry.id)} className="btn-ghost p-2" title={showPassword[entry.id] ? t('vault.hide') : t('vault.show')}>
-                                        {showPassword[entry.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
-                                    <button onClick={() => handleCopyPassword(entry.id)} className="btn-ghost p-2" title={t('vault.copy')}><Copy className="w-4 h-4" /></button>
-                                    {isOwner && <button onClick={() => handleEditEntry(entry.id)} className="btn-ghost p-2" title={t('vault.edit')}><Pencil className="w-4 h-4" /></button>}
-                                    <button onClick={() => setShareEntry(entry)} className="btn-ghost p-2" title={t('share.title')}><Share2 className="w-4 h-4" /></button>
-                                    {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
-                                    {isOwner && <button onClick={() => handleDeleteEntry(entry.id)} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>}
+
+                                <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pt-3 border-t border-gray-100 dark:border-gray-800">
+                                    {isOwner && <button onClick={() => handleEditEntry(entry.id)} className="btn-ghost p-1.5" title={t('vault.edit')}><Pencil className="w-4 h-4" /></button>}
+                                    <button onClick={() => setShareEntry(entry)} className="btn-ghost p-1.5" title={t('share.title')}><Share2 className="w-4 h-4" /></button>
+                                    {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-1.5" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
+                                    {isOwner && <button onClick={() => handleDeleteEntry(entry.id)} className="btn-ghost p-1.5 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>}
                                 </div>
                             </div>
                         </div>
@@ -614,27 +624,27 @@ export default function Groups({ currentUserId }: { currentUserId: number }) {
                     <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">{t('groups.empty_desc')}</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {groups.map(group => (
                         <div
                             key={group.id}
-                            className="card-hover cursor-pointer group"
+                            className="card-hover cursor-pointer group flex flex-col h-full relative"
                             onClick={() => setSelectedGroup(group)}
                         >
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-start gap-4">
                                 <div className="w-12 h-12 bg-sekure-50 dark:bg-sekure-600/10 rounded-md flex items-center justify-center flex-shrink-0">
                                     <Users className="w-6 h-6 text-sekure-600 dark:text-sekure-400" />
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 pr-6">
                                     <h3 className="font-semibold text-gray-800 dark:text-white truncate">{group.name}</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                         {group.members.length} {group.members.length !== 1 ? t('groups.members') : t('groups.member')}
-                                        <span className="mx-2">·</span>
-                                        <span className="text-gray-400 dark:text-gray-500">{t('groups.owner')}: {group.owner_username}</span>
+                                        <span className="mx-2 block sm:inline">·</span>
+                                        <span className="text-gray-400 dark:text-gray-500 block sm:inline">{t('groups.owner')}: {group.owner_username}</span>
                                     </p>
                                 </div>
                                 {group.owner_id === currentUserId && (
-                                    <button onClick={e => { e.stopPropagation(); handleDeleteGroup(group.id); }} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title={t('groups.delete_group')}>
+                                    <button onClick={e => { e.stopPropagation(); handleDeleteGroup(group.id); }} className="absolute top-4 right-4 text-red-400 hover:text-red-600 dark:hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-900 rounded-full p-1" title={t('groups.delete_group')}>
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 )}
