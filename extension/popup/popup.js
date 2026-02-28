@@ -117,13 +117,16 @@ function createPasswordItem(entry, showCopyBtn = true) {
     const div = document.createElement('div');
     div.className = 'password-item';
 
-    const hasUrl = !!entry.url;
-    const iconSvg = hasUrl
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    const domain = entry.url ? extractDomain(entry.url) : null;
+    let iconHTML = '';
+    if (domain) {
+        iconHTML = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${domain}" style="width:20px;height:20px;border-radius:4px;object-fit:contain;" onerror="this.outerHTML='<svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><circle cx=\\'12\\' cy=\\'12\\' r=\\'10\\'/><line x1=\\'2\\' y1=\\'12\\' x2=\\'22\\' y2=\\'12\\'/><path d=\\'M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\\'/></svg>'"/>`;
+    } else {
+        iconHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    }
 
     div.innerHTML = `
-        <div class="password-icon">${iconSvg}</div>
+        <div class="password-icon">${iconHTML}</div>
         <div class="password-info">
             <div class="password-title">${escapeHtml(entry.title)}</div>
             ${entry.username ? `<div class="password-user">${escapeHtml(entry.username)}</div>` : ''}
