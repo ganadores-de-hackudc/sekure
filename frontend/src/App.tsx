@@ -15,6 +15,7 @@ import KidsLayout from './components/KidsLayout';
 import KidsVault from './components/KidsVault';
 import Profile from './components/Profile';
 import ShareReceive from './components/ShareReceive';
+import ExtensionDownload from './components/ExtensionDownload';
 
 function AppContent() {
     const [auth, setAuth] = useState<AuthStatus | null>(null);
@@ -79,6 +80,7 @@ function AppContent() {
                 <Route path="/checker" element={<Checker />} />
                 <Route path="/groups" element={<Groups currentUserId={auth.user?.id ?? 0} />} />
                 <Route path="/kids" element={<SekureKids />} />
+                <Route path="/extension" element={<ExtensionDownload />} />
                 <Route path="/profile" element={<Profile username={auth.user?.username ?? ''} onLogout={handleLogout} onUsernameChanged={handleUsernameChanged} />} />
                 <Route path="/share/:shareId" element={<ShareReceive />} />
                 <Route path="*" element={<Navigate to="/vault" replace />} />

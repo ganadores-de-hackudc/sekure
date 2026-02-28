@@ -6,7 +6,7 @@ import { useLanguage, LANGUAGES } from '../i18n';
 import toast from 'react-hot-toast';
 import {
     KeyRound, ShieldCheck, Archive, Users,
-    LogOut, Menu, X, User, Moon, Sun, Globe, ChevronDown,
+    LogOut, Menu, X, User, Moon, Sun, Globe, ChevronDown, Puzzle,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -110,6 +110,19 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                     </NavLink>
                 </div>
 
+                {/* Extension */}
+                <div className="flex-shrink-0">
+                    <NavLink
+                        to="/extension"
+                        className={({ isActive }) =>
+                            isActive ? 'sidebar-link-active' : 'sidebar-link'
+                        }
+                    >
+                        <Puzzle className="w-5 h-5" />
+                        {t('nav.extension')}
+                    </NavLink>
+                </div>
+
                 <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
                     <NavLink to="/profile" className={({ isActive }) => `flex items-center gap-2 px-4 py-2 mb-2 rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-sekure-50 dark:bg-sekure-900/10 text-sekure-600 dark:text-sekure-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                         <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -169,6 +182,20 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                                 }
                             >
                                 <img src="/sekure-kids-logo.svg" alt="sekure KIDS" className="h-8 w-auto" />
+                            </NavLink>
+                        </div>
+
+                        {/* Extension */}
+                        <div className="flex-shrink-0">
+                            <NavLink
+                                to="/extension"
+                                onClick={() => setSidebarOpen(false)}
+                                className={({ isActive }) =>
+                                    isActive ? 'sidebar-link-active' : 'sidebar-link'
+                                }
+                            >
+                                <Puzzle className="w-5 h-5" />
+                                {t('nav.extension')}
                             </NavLink>
                         </div>
 

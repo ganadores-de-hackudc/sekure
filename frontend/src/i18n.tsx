@@ -71,6 +71,20 @@ const translations: Record<Lang, Record<string, string>> = {
         'nav.logout_error': 'Error al cerrar sesión',
         'nav.dark_mode': 'Modo oscuro',
         'nav.light_mode': 'Modo claro',
+        'nav.extension': 'Extensión',
+
+        // Extension download
+        'ext.title': 'Extensión para el Navegador',
+        'ext.subtitle': 'Autocompleta y guarda contraseñas directamente desde tu navegador',
+        'ext.download_btn': 'DESCARGAR',
+        'ext.instructions_title': 'Instrucciones de instalación',
+        'ext.step1': 'Descarga el archivo ZIP pulsando el botón de arriba.',
+        'ext.step2': 'Descomprime el archivo ZIP en una carpeta de tu ordenador.',
+        'ext.step3': 'Abre Chrome y ve a chrome://extensions en la barra de direcciones.',
+        'ext.step4': 'Activa el "Modo de desarrollador" en la esquina superior derecha.',
+        'ext.step5': 'Pulsa "Cargar descomprimida" y selecciona la carpeta que descomprimiste.',
+        'ext.step6': 'La extensión aparecerá en la barra de herramientas. ¡Haz clic en ella para iniciar sesión!',
+        'ext.success_note': 'Una vez instalada, la extensión detectará automáticamente los formularios de inicio de sesión y te ofrecerá autocompletar tus credenciales guardadas en Sekure.',
 
         // Generator
         'gen.title': 'Generador de Contraseñas',
@@ -390,6 +404,20 @@ const translations: Record<Lang, Record<string, string>> = {
         'nav.logout_error': 'Error logging out',
         'nav.dark_mode': 'Dark mode',
         'nav.light_mode': 'Light mode',
+        'nav.extension': 'Extension',
+
+        // Extension download
+        'ext.title': 'Browser Extension',
+        'ext.subtitle': 'Autofill and save passwords directly from your browser',
+        'ext.download_btn': 'DOWNLOAD',
+        'ext.instructions_title': 'Installation instructions',
+        'ext.step1': 'Download the ZIP file by clicking the button above.',
+        'ext.step2': 'Extract the ZIP file into a folder on your computer.',
+        'ext.step3': 'Open Chrome and go to chrome://extensions in the address bar.',
+        'ext.step4': 'Enable "Developer mode" in the top-right corner.',
+        'ext.step5': 'Click "Load unpacked" and select the folder you extracted.',
+        'ext.step6': 'The extension will appear in the toolbar. Click on it to log in!',
+        'ext.success_note': 'Once installed, the extension will automatically detect login forms and offer to autofill your credentials saved in Sekure.',
 
         'gen.title': 'Password Generator',
         'gen.subtitle': 'Generate robust passwords with different cryptographically secure methods',
@@ -701,6 +729,20 @@ const translations: Record<Lang, Record<string, string>> = {
         'nav.logout_error': 'Erro ao pechar sesión',
         'nav.dark_mode': 'Modo escuro',
         'nav.light_mode': 'Modo claro',
+        'nav.extension': 'Extensión',
+
+        // Extension download
+        'ext.title': 'Extensión para o Navegador',
+        'ext.subtitle': 'Autocompleta e garda contrasinais directamente dende o teu navegador',
+        'ext.download_btn': 'DESCARGAR',
+        'ext.instructions_title': 'Instrucións de instalación',
+        'ext.step1': 'Descarga o arquivo ZIP premendo no botón de arriba.',
+        'ext.step2': 'Descomprime o arquivo ZIP nunha carpeta do teu ordenador.',
+        'ext.step3': 'Abre Chrome e vai a chrome://extensions na barra de enderezos.',
+        'ext.step4': 'Activa o "Modo de desenvolvedor" na esquina superior dereita.',
+        'ext.step5': 'Preme "Cargar descomprimida" e selecciona a carpeta que descomprimiches.',
+        'ext.step6': 'A extensión aparecerá na barra de ferramentas. ¡Fai clic nela para iniciar sesión!',
+        'ext.success_note': 'Unha vez instalada, a extensión detectará automaticamente os formularios de inicio de sesión e ofrecerache autocompletar as túas credenciais gardadas en Sekure.',
 
         'gen.title': 'Xerador de Contrasinais',
         'gen.subtitle': 'Xera contrasinais robustos con distintos métodos criptograficamente seguros',
