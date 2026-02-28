@@ -100,12 +100,12 @@ export const checkPassword = (password: string) =>
 // Vault
 export const listVault = (params?: {
     search?: string;
-    tag?: string;
+    tags?: string[];
     favorites_only?: boolean;
 }) => {
     const sp = new URLSearchParams();
     if (params?.search) sp.set('search', params.search);
-    if (params?.tag) sp.set('tag', params.tag);
+    if (params?.tags && params.tags.length > 0) sp.set('tag', params.tags.join(','));
     if (params?.favorites_only) sp.set('favorites_only', 'true');
     const qs = sp.toString();
     return request<VaultEntry[]>(`/vault${qs ? `?${qs}` : ''}`);

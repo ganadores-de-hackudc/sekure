@@ -11,7 +11,7 @@ import ShareModal from './ShareModal';
 import {
     Archive, Search, Star, Plus, Tag as TagIcon,
     Eye, EyeOff, Copy, Trash2, ExternalLink,
-    Globe, User, StickyNote, X, Filter, Share2,
+    Globe, User, StickyNote, X, Filter, Share2, Pencil,
 } from 'lucide-react';
 
 export default function Vault() {
@@ -19,9 +19,10 @@ export default function Vault() {
     const [entries, setEntries] = useState<VaultEntry[]>([]);
     const [tags, setTags] = useState<Tag[]>([]);
     const [search, setSearch] = useState('');
-    const [filterTag, setFilterTag] = useState('');
+    const [filterTags, setFilterTags] = useState<string[]>([]);
     const [favoritesOnly, setFavoritesOnly] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editEntry, setEditEntry] = useState<VaultEntryWithPassword | null>(null);
     const [selectedEntry, setSelectedEntry] = useState<VaultEntryWithPassword | null>(null);
     const [showPassword, setShowPassword] = useState<Record<number, boolean>>({});
     const [decryptedPasswords, setDecryptedPasswords] = useState<Record<number, string>>({});
@@ -38,7 +39,7 @@ export default function Vault() {
         setLoading(true);
         try {
             const [vaultData, tagsData] = await Promise.all([
-                listVault({ search, tag: filterTag, favorites_only: favoritesOnly }),
+                listVault({ search, tags: filterTags, favorites_only: favoritesOnly }),
                 listTags(),
             ]);
             setEntries(vaultData);
@@ -48,7 +49,7 @@ export default function Vault() {
         } finally {
             setLoading(false);
         }
-    }, [search, filterTag, favoritesOnly]);
+    }, [search, filterTags, favoritesOnly]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -96,7 +97,21 @@ export default function Vault() {
     };
 
     const handleDeleteTag = async (id: number) => {
-        try { await deleteTag(id); if (filterTag) setFilterTag(''); await fetchData(); } catch (err: any) { toast.error(err.message); }
+        try {
+            await deleteTag(id);
+            const deletedTag = tags.find(t => t.id === id);
+            if (deletedTag && filterTags.includes(deletedTag.name)) {
+                setFilterTags(filterTags.filter(n => n !== deletedTag.name));
+            }
+            await fetchData();
+        } catch (err: any) { toast.error(err.message); }
+    };
+
+    const handleEdit = async (id: number) => {
+        try {
+            const entry = await getVaultEntry(id);
+            setEditEntry(entry);
+        } catch (err: any) { toast.error(err.message); }
     };
 
     return (
@@ -136,18 +151,21 @@ export default function Vault() {
                             </button>
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm text-gray-500 dark:text-gray-400">{t('vault.tags')}</span>
-                                <button onClick={() => setFilterTag('')}
-                                    className={`badge border transition-colors ${!filterTag ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400' : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'}`}>
+                                <button onClick={() => setFilterTags([])}
+                                    className={`badge border transition-colors ${filterTags.length === 0 ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400' : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'}`}>
                                     {t('vault.all')}
                                 </button>
-                                {tags.map((tag) => (
-                                    <button key={tag.id} onClick={() => setFilterTag(filterTag === tag.name ? '' : tag.name)}
-                                        className={`badge border transition-colors group ${filterTag === tag.name ? 'bg-opacity-20 border-opacity-50' : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'}`}
-                                        style={{ backgroundColor: filterTag === tag.name ? `${tag.color}20` : undefined, borderColor: filterTag === tag.name ? tag.color : undefined, color: filterTag === tag.name ? tag.color : undefined }}>
-                                        {tag.name}
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteTag(tag.id); }} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
-                                    </button>
-                                ))}
+                                {tags.map((tag) => {
+                                    const isActive = filterTags.includes(tag.name);
+                                    return (
+                                        <button key={tag.id} onClick={() => setFilterTags(isActive ? filterTags.filter(n => n !== tag.name) : [...filterTags, tag.name])}
+                                            className={`badge border transition-colors group ${isActive ? 'bg-opacity-20 border-opacity-50' : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'}`}
+                                            style={{ backgroundColor: isActive ? `${tag.color}20` : undefined, borderColor: isActive ? tag.color : undefined, color: isActive ? tag.color : undefined }}>
+                                            {tag.name}
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteTag(tag.id); }} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
+                                        </button>
+                                    );
+                                })}
                                 <button onClick={() => setShowTagCreator(!showTagCreator)}
                                     className="badge border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:border-gray-400 transition-colors">
                                     <Plus className="w-3 h-3 mr-1" />{t('vault.new_tag')}
@@ -210,6 +228,7 @@ export default function Vault() {
                                         {showPassword[entry.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                     <button onClick={() => handleCopyPassword(entry.id)} className="btn-ghost p-2" title={t('vault.copy')}><Copy className="w-4 h-4" /></button>
+                                    <button onClick={() => handleEdit(entry.id)} className="btn-ghost p-2" title={t('vault.edit')}><Pencil className="w-4 h-4" /></button>
                                     <button onClick={() => setShareEntry(entry)} className="btn-ghost p-2" title={t('share.title')}><Share2 className="w-4 h-4" /></button>
                                     {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
                                     <button onClick={() => handleDelete(entry.id)} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>
@@ -221,6 +240,7 @@ export default function Vault() {
             )}
 
             {showAddModal && <SaveToVaultModal onClose={() => { setShowAddModal(false); fetchData(); }} />}
+            {editEntry && <SaveToVaultModal editEntry={editEntry} onClose={() => { setEditEntry(null); fetchData(); }} />}
             {shareEntry && <ShareModal entryId={shareEntry.id} entryTitle={shareEntry.title} entryUrl={shareEntry.url} onClose={() => setShareEntry(null)} />}
         </div>
     );

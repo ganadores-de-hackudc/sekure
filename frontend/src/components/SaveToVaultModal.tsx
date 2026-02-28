@@ -1,26 +1,28 @@
 import { useState, useEffect } from 'react';
-import { createVaultEntry, listTags } from '../api';
-import type { Tag } from '../types';
+import { createVaultEntry, updateVaultEntry, listTags } from '../api';
+import type { Tag, VaultEntryWithPassword } from '../types';
 import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
 import { X, Save, Eye, EyeOff, Star } from 'lucide-react';
 
 interface SaveToVaultModalProps {
     password?: string;
+    editEntry?: VaultEntryWithPassword | null;
     onClose: () => void;
 }
 
-export default function SaveToVaultModal({ password: initialPassword, onClose }: SaveToVaultModalProps) {
+export default function SaveToVaultModal({ password: initialPassword, editEntry, onClose }: SaveToVaultModalProps) {
     const { t } = useLanguage();
-    const [title, setTitle] = useState('');
-    const [username, setUsername] = useState('');
-    const [url, setUrl] = useState('');
-    const [password, setPassword] = useState(initialPassword || '');
-    const [notes, setNotes] = useState('');
-    const [isFavorite, setIsFavorite] = useState(false);
-    const [selectedTags, setSelectedTags] = useState<number[]>([]);
+    const isEdit = !!editEntry;
+    const [title, setTitle] = useState(editEntry?.title || '');
+    const [username, setUsername] = useState(editEntry?.username || '');
+    const [url, setUrl] = useState(editEntry?.url || '');
+    const [password, setPassword] = useState(editEntry?.password || initialPassword || '');
+    const [notes, setNotes] = useState(editEntry?.notes || '');
+    const [isFavorite, setIsFavorite] = useState(editEntry?.is_favorite || false);
+    const [selectedTags, setSelectedTags] = useState<number[]>(editEntry?.tags?.map(t => t.id) || []);
     const [tags, setTags] = useState<Tag[]>([]);
-    const [showPassword, setShowPassword] = useState(!!initialPassword);
+    const [showPassword, setShowPassword] = useState(!!initialPassword || isEdit);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => { listTags().then(setTags).catch(() => { }); }, []);
@@ -30,8 +32,13 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
         if (!title || !password) { toast.error(t('save.required')); return; }
         setLoading(true);
         try {
-            await createVaultEntry({ title, username, url, password, notes, is_favorite: isFavorite, tag_ids: selectedTags });
-            toast.success(t('save.saved'));
+            if (isEdit && editEntry) {
+                await updateVaultEntry(editEntry.id, { title, username, url, password, notes, is_favorite: isFavorite, tag_ids: selectedTags });
+                toast.success(t('save.updated'));
+            } else {
+                await createVaultEntry({ title, username, url, password, notes, is_favorite: isFavorite, tag_ids: selectedTags });
+                toast.success(t('save.saved'));
+            }
             onClose();
         } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
     };
@@ -45,7 +52,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
             <div className="fixed inset-0 bg-black/40 dark:bg-black/60" onClick={onClose} />
             <div className="relative w-full max-w-lg card animate-slide-up max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">{t('save.title')}</h3>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">{isEdit ? t('save.edit_title') : t('save.title')}</h3>
                     <button onClick={onClose} className="btn-ghost p-2"><X className="w-5 h-5" /></button>
                 </div>
 
@@ -100,7 +107,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="btn-secondary flex-1">{t('save.cancel')}</button>
                         <button type="submit" disabled={loading || !title || !password} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Save className="w-4 h-4" />{t('save.save')}</>}
+                            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Save className="w-4 h-4" />{isEdit ? t('save.update') : t('save.save')}</>}
                         </button>
                     </div>
                 </form>

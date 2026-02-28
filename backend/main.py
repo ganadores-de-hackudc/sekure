@@ -313,7 +313,9 @@ def list_vault(
     if favorites_only:
         query = query.filter(Password.is_favorite == True)
     if tag:
-        query = query.join(Password.tags).filter(Tag.name == tag)
+        tag_names = [t.strip() for t in tag.split(",") if t.strip()]
+        if tag_names:
+            query = query.join(Password.tags).filter(Tag.name.in_(tag_names))
 
     entries = query.order_by(Password.updated_at.desc()).all()
     return entries

@@ -176,6 +176,10 @@ const translations: Record<Lang, Record<string, string>> = {
         'save.save': 'Guardar',
         'save.required': 'Título y contraseña son obligatorios',
         'save.saved': 'Contraseña guardada',
+        'save.edit_title': 'Editar contraseña',
+        'save.update': 'Actualizar',
+        'save.updated': 'Contraseña actualizada',
+        'vault.edit': 'Editar',
 
         // Groups
         'groups.title': 'Grupos',
@@ -486,6 +490,10 @@ const translations: Record<Lang, Record<string, string>> = {
         'save.save': 'Save',
         'save.required': 'Title and password are required',
         'save.saved': 'Password saved',
+        'save.edit_title': 'Edit password',
+        'save.update': 'Update',
+        'save.updated': 'Password updated',
+        'vault.edit': 'Edit',
 
         // Groups
         'groups.title': 'Groups',
@@ -793,6 +801,10 @@ const translations: Record<Lang, Record<string, string>> = {
         'save.save': 'Gardar',
         'save.required': 'Título e contrasinal son obrigatorios',
         'save.saved': 'Contrasinal gardado',
+        'save.edit_title': 'Editar contrasinal',
+        'save.update': 'Actualizar',
+        'save.updated': 'Contrasinal actualizado',
+        'vault.edit': 'Editar',
 
         // Groups
         'groups.title': 'Grupos',
