@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import ShareModal from './ShareModal';
 import Favicon from './Favicon';
+import { requireBiometric } from '../biometric';
 
 // ─── Add Password Modal ───
 function AddGroupPasswordModal({ groupId, onClose }: { groupId: number; onClose: () => void }) {
@@ -280,6 +281,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
     const handleShowPassword = async (id: number) => {
         if (showPassword[id]) { setShowPassword({ ...showPassword, [id]: false }); return; }
         try {
+            await requireBiometric();
             const entry = await getGroupVaultEntry(group.id, id);
             setDecryptedPasswords({ ...decryptedPasswords, [id]: entry.password });
             setShowPassword({ ...showPassword, [id]: true });
@@ -288,6 +290,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
 
     const handleCopyPassword = async (id: number) => {
         try {
+            await requireBiometric();
             let pw = decryptedPasswords[id];
             if (!pw) { const entry = await getGroupVaultEntry(group.id, id); pw = entry.password; setDecryptedPasswords({ ...decryptedPasswords, [id]: pw }); }
             await navigator.clipboard.writeText(pw);

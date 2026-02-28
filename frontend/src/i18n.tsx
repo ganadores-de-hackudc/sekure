@@ -312,6 +312,17 @@ const translations: Record<Lang, Record<string, string>> = {
         'profile.delete_account_btn': 'Eliminar mi cuenta permanentemente',
         'profile.account_deleted': 'Cuenta eliminada',
 
+        // Biometric
+        'bio.title': 'Bloqueo biométrico',
+        'bio.description': 'Verifica tu identidad con huella, rostro o PIN antes de ver o copiar contraseñas.',
+        'bio.enable': 'Activar bloqueo biométrico',
+        'bio.disable': 'Desactivar bloqueo biométrico',
+        'bio.enabled': 'Bloqueo biométrico activado',
+        'bio.disabled': 'Bloqueo biométrico desactivado',
+        'bio.not_available': 'Tu dispositivo no soporta autenticación biométrica',
+        'bio.cancelled': 'Verificación cancelada',
+        'bio.error': 'Error en la verificación biométrica',
+
         // Share
         'share.title': 'Compartir contraseña',
         'share.expiry': 'Caducidad del enlace',
@@ -649,6 +660,17 @@ const translations: Record<Lang, Record<string, string>> = {
         'profile.delete_account_btn': 'Permanently delete my account',
         'profile.account_deleted': 'Account deleted',
 
+        // Biometric
+        'bio.title': 'Biometric lock',
+        'bio.description': 'Verify your identity with fingerprint, face or PIN before viewing or copying passwords.',
+        'bio.enable': 'Enable biometric lock',
+        'bio.disable': 'Disable biometric lock',
+        'bio.enabled': 'Biometric lock enabled',
+        'bio.disabled': 'Biometric lock disabled',
+        'bio.not_available': 'Your device does not support biometric authentication',
+        'bio.cancelled': 'Verification cancelled',
+        'bio.error': 'Biometric verification error',
+
         // Share
         'share.title': 'Share password',
         'share.expiry': 'Link expiration',
@@ -982,6 +1004,17 @@ const translations: Record<Lang, Record<string, string>> = {
         'profile.type_delete_confirm': 'Debes escribir ELIMINAR para confirmar',
         'profile.delete_account_btn': 'Eliminar a miña conta permanentemente',
         'profile.account_deleted': 'Conta eliminada',
+
+        // Biometric
+        'bio.title': 'Bloqueo biométrico',
+        'bio.description': 'Verifica a túa identidade con pegada, rostro ou PIN antes de ver ou copiar contrasinais.',
+        'bio.enable': 'Activar bloqueo biométrico',
+        'bio.disable': 'Desactivar bloqueo biométrico',
+        'bio.enabled': 'Bloqueo biométrico activado',
+        'bio.disabled': 'Bloqueo biométrico desactivado',
+        'bio.not_available': 'O teu dispositivo non soporta autenticación biométrica',
+        'bio.cancelled': 'Verificación cancelada',
+        'bio.error': 'Erro na verificación biométrica',
 
         // Share
         'share.title': 'Compartir contrasinal',

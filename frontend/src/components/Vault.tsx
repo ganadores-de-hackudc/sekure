@@ -14,6 +14,7 @@ import {
     Eye, EyeOff, Copy, Trash2, ExternalLink,
     Globe, User, StickyNote, X, Filter, Share2, Pencil,
 } from 'lucide-react';
+import { requireBiometric } from '../biometric';
 
 const tagColors = ['#9b1b2f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
@@ -79,6 +80,7 @@ export default function Vault() {
     const handleShowPassword = async (id: number) => {
         if (showPassword[id]) { setShowPassword({ ...showPassword, [id]: false }); return; }
         try {
+            await requireBiometric();
             const entry = await getVaultEntry(id);
             setDecryptedPasswords({ ...decryptedPasswords, [id]: entry.password });
             setShowPassword({ ...showPassword, [id]: true });
@@ -87,6 +89,7 @@ export default function Vault() {
 
     const handleCopyPassword = async (id: number) => {
         try {
+            await requireBiometric();
             let pw = decryptedPasswords[id];
             if (!pw) { const entry = await getVaultEntry(id); pw = entry.password; setDecryptedPasswords({ ...decryptedPasswords, [id]: pw }); }
             await navigator.clipboard.writeText(pw);

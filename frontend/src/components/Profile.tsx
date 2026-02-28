@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { changeUsername, changePassword, deleteAccount, clearToken } from '../api';
 import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
-import { User, Key, Trash2, Eye, EyeOff, ArrowLeft, Shield } from 'lucide-react';
+import { User, Key, Trash2, Eye, EyeOff, ArrowLeft, Shield, Fingerprint } from 'lucide-react';
+import { isBiometricAvailable, isBiometricEnabled, registerBiometric, disableBiometric } from '../biometric';
 
 interface ProfileProps {
     username: string;
@@ -62,6 +63,39 @@ export default function Profile({ username, onLogout, onUsernameChanged }: Profi
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [showDeletePw, setShowDeletePw] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+    // Biometric state
+    const [bioAvailable, setBioAvailable] = useState(false);
+    const [bioEnabled, setBioEnabled] = useState(false);
+    const [bioLoading, setBioLoading] = useState(false);
+
+    useEffect(() => {
+        isBiometricAvailable().then(setBioAvailable);
+        setBioEnabled(isBiometricEnabled());
+    }, []);
+
+    const handleToggleBiometric = async () => {
+        setBioLoading(true);
+        try {
+            if (bioEnabled) {
+                disableBiometric();
+                setBioEnabled(false);
+                toast.success(t('bio.disabled'));
+            } else {
+                await registerBiometric(username);
+                setBioEnabled(true);
+                toast.success(t('bio.enabled'));
+            }
+        } catch (err: any) {
+            if (err?.name === 'NotAllowedError') {
+                toast.error(t('bio.cancelled'));
+            } else {
+                toast.error(t('bio.error'));
+            }
+        } finally {
+            setBioLoading(false);
+        }
+    };
 
     const handleChangeUsername = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -274,6 +308,37 @@ export default function Profile({ username, onLogout, onUsernameChanged }: Profi
                         <p className="text-sm text-gray-500 dark:text-gray-400">{t('profile.change_password_short')}</p>
                     </div>
                 </button>
+
+                {/* Biometric lock */}
+                {bioAvailable && (
+                    <button
+                        onClick={handleToggleBiometric}
+                        disabled={bioLoading}
+                        className={`w-full flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-gray-800/50 border ${bioEnabled
+                                ? 'border-green-300 dark:border-green-700'
+                                : 'border-gray-200 dark:border-gray-700'
+                            } hover:border-sekure-300 dark:hover:border-sekure-600 hover:shadow-md transition-all text-left group`}
+                    >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${bioEnabled
+                                ? 'bg-green-50 dark:bg-green-900/20'
+                                : 'bg-purple-50 dark:bg-purple-900/20'
+                            }`}>
+                            {bioLoading
+                                ? <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                                : <Fingerprint className={`w-5 h-5 ${bioEnabled ? 'text-green-500' : 'text-purple-500'}`} />
+                            }
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-semibold text-gray-800 dark:text-white">{t('bio.title')}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {bioEnabled ? t('bio.disable') : t('bio.enable')}
+                            </p>
+                        </div>
+                        {bioEnabled && (
+                            <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0" />
+                        )}
+                    </button>
+                )}
 
                 {/* Delete account */}
                 <button

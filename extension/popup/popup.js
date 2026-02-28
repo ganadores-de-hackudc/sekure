@@ -51,6 +51,106 @@ async function copyToClipboard(text) {
 
 let allEntries = [];
 let currentTabUrl = '';
+let _bioLastVerified = 0;
+const BIO_GRACE_MS = 2 * 60 * 1000; // 2 minutes
+
+// ─── Biometric helpers ───
+async function isBioAvailable() {
+    if (!window.PublicKeyCredential) return false;
+    try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+    catch { return false; }
+}
+
+function isBioEnabled() {
+    try {
+        const d = JSON.parse(localStorage.getItem('sekure_bio_ext') || 'null');
+        return !!d?.credentialId;
+    } catch { return false; }
+}
+
+async function registerBio() {
+    const { username } = await chrome.storage.local.get('username');
+    const credential = await navigator.credentials.create({
+        publicKey: {
+            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            rp: { name: 'Sekure Extension' },
+            user: {
+                id: new TextEncoder().encode(username || 'user'),
+                name: username || 'user',
+                displayName: username || 'user',
+            },
+            pubKeyCredParams: [
+                { alg: -7, type: 'public-key' },
+                { alg: -257, type: 'public-key' },
+            ],
+            authenticatorSelection: {
+                authenticatorAttachment: 'platform',
+                userVerification: 'required',
+                residentKey: 'discouraged',
+            },
+            timeout: 60000,
+        },
+    });
+    if (!credential) throw new Error('Cancelado');
+    const rawId = Array.from(new Uint8Array(credential.rawId));
+    localStorage.setItem('sekure_bio_ext', JSON.stringify({ credentialId: rawId }));
+    _bioLastVerified = Date.now();
+}
+
+function disableBio() {
+    localStorage.removeItem('sekure_bio_ext');
+    _bioLastVerified = 0;
+}
+
+async function requireBio() {
+    if (!isBioEnabled()) return;
+    if (Date.now() - _bioLastVerified < BIO_GRACE_MS) return;
+    const { credentialId } = JSON.parse(localStorage.getItem('sekure_bio_ext'));
+    await navigator.credentials.get({
+        publicKey: {
+            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            allowCredentials: [{ id: new Uint8Array(credentialId), type: 'public-key' }],
+            userVerification: 'required',
+            timeout: 60000,
+        },
+    });
+    _bioLastVerified = Date.now();
+}
+
+// ─── Biometric toggle UI ───
+async function setupBioToggle() {
+    const btn = document.getElementById('bioToggleBtn');
+    if (!btn) return;
+    const available = await isBioAvailable();
+    if (!available) { btn.style.display = 'none'; return; }
+    btn.style.display = 'inline-flex';
+    updateBioBtn(btn);
+    btn.onclick = async () => {
+        try {
+            if (isBioEnabled()) {
+                disableBio();
+                showToast('Bloqueo biométrico desactivado');
+            } else {
+                await registerBio();
+                showToast('Bloqueo biométrico activado');
+            }
+            updateBioBtn(btn);
+        } catch (err) {
+            if (err?.name === 'NotAllowedError') {
+                showToast('Verificación cancelada', 'error');
+            } else {
+                showToast('Error al configurar biometría', 'error');
+            }
+        }
+    };
+}
+
+function updateBioBtn(btn) {
+    const enabled = isBioEnabled();
+    btn.textContent = enabled ? '🔒' : '🔓';
+    btn.style.background = enabled ? 'var(--sekure-50, #f0f9ff)' : 'transparent';
+    btn.title = enabled ? 'Bloqueo biométrico: activado' : 'Bloqueo biométrico: desactivado';
+}
 
 // ─── Toast ───
 function showToast(text, type = 'success') {
@@ -214,6 +314,7 @@ function createPasswordItem(entry, showCopyBtn = true) {
     div.querySelector('.copy-pw-btn').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
+            await requireBio();
             const pw = await fetchDecryptedPassword(entry.id);
             if (!pw) {
                 showToast('No se pudo descifrar la contraseña', 'error');
@@ -235,6 +336,7 @@ function createPasswordItem(entry, showCopyBtn = true) {
     div.querySelector('.fill-btn').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
+            await requireBio();
             const pw = await fetchDecryptedPassword(entry.id);
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab?.id) {
@@ -304,6 +406,9 @@ async function loadDashboard() {
     loadingSpinner.style.display = 'block';
     passwordList.style.display = 'none';
     emptyState.style.display = 'none';
+
+    // Set up biometric toggle
+    setupBioToggle();
 
     try {
         // Get current tab URL
