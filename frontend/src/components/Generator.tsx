@@ -204,22 +204,15 @@ export default function Generator() {
                             <div>
                                 <div className="flex justify-between items-center mb-2">
                                     <span className={`font-semibold ${strengthColor(result.strength)}`}>{result.strength}</span>
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">{result.entropy} {t('gen.entropy_bits')}</span>
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
                                     <div className={`h-full rounded-full transition-all duration-500 ${strengthBg(result.strength)}`} style={{ width: `${strengthPercent(result.strength)}%` }} />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('gen.entropy')}</p>
-                                    <p className="text-lg font-bold text-sekure-600 dark:text-sekure-400">{result.entropy} bits</p>
-                                </div>
-                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('gen.crack_time')}</p>
-                                    <p className="text-lg font-bold text-gray-800 dark:text-white truncate">{result.crack_time}</p>
-                                </div>
+                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('gen.crack_time')}</p>
+                                <p className="text-lg font-bold text-gray-800 dark:text-white truncate">{result.crack_time}</p>
                             </div>
 
                             <div className="flex gap-3">

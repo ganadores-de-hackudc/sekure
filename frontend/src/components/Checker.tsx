@@ -4,7 +4,7 @@ import type { CheckResponse } from '../types';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
-import EntropyChart from './EntropyChart';
+
 import {
     ShieldCheck, Eye, EyeOff, AlertTriangle,
     CheckCircle2, XCircle, Search,
@@ -153,15 +153,9 @@ export default function Checker() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('gen.entropy')}</p>
-                                    <p className="text-xl font-bold text-sekure-600 dark:text-sekure-400">{result.entropy} bits</p>
-                                </div>
-                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('check.estimated_crack')}</p>
-                                    <p className="text-lg font-bold text-gray-800 dark:text-white truncate">{result.crack_time}</p>
-                                </div>
+                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('check.estimated_crack')}</p>
+                                <p className="text-lg font-bold text-gray-800 dark:text-white truncate">{result.crack_time}</p>
                             </div>
 
                             <div className="space-y-2">
@@ -205,10 +199,7 @@ export default function Checker() {
                                     </div>
                                 )}
                             </div>
-                            <div className="card">
-                                <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('check.cumulative_entropy')}</h3>
-                                <EntropyChart data={result.entropy_breakdown} />
-                            </div>
+
                         </div>
                     </div>
                 </div>
