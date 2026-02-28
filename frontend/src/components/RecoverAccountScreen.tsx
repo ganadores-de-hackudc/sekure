@@ -108,6 +108,10 @@ export default function RecoverAccountScreen({ onRecovered, onBack }: RecoverAcc
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 placeholder={t('recovery.new_password')}
                                 className="input-field pr-12"
+                                autoComplete="off"
+                                data-1p-ignore
+                                data-lpignore="true"
+                                data-form-type="other"
                             />
                             <button
                                 type="button"
@@ -124,6 +128,10 @@ export default function RecoverAccountScreen({ onRecovered, onBack }: RecoverAcc
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder={t('auth.confirm_password')}
                             className="input-field"
+                            autoComplete="off"
+                            data-1p-ignore
+                            data-lpignore="true"
+                            data-form-type="other"
                         />
 
                         <button

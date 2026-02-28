@@ -212,7 +212,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                         {mode === 'login' ? t('auth.login_desc') : t('auth.register_desc')}
                     </p>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off" data-lpignore="true">
                         <input
                             type="text"
                             value={username}
@@ -220,6 +220,10 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                             placeholder={t('auth.username')}
                             className="input-field"
                             autoFocus
+                            autoComplete="off"
+                            data-1p-ignore
+                            data-lpignore="true"
+                            data-form-type="other"
                         />
 
                         <div className="relative">
@@ -229,6 +233,10 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder={t('auth.master_password')}
                                 className="input-field pr-12"
+                                autoComplete="off"
+                                data-1p-ignore
+                                data-lpignore="true"
+                                data-form-type="other"
                             />
                             <button
                                 type="button"
@@ -271,6 +279,10 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     placeholder={t('auth.confirm_password')}
                                     className="input-field"
+                                    autoComplete="off"
+                                    data-1p-ignore
+                                    data-lpignore="true"
+                                    data-form-type="other"
                                 />
                             </>
                         )}

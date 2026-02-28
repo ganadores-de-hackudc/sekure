@@ -72,7 +72,7 @@ export default function SaveToVaultModal({ password: initialPassword, editEntry,
                     <div>
                         <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('save.password')}</label>
                         <div className="relative">
-                            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('save.password_placeholder')} className="input-field pr-12 font-mono-password" />
+                            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('save.password_placeholder')} className="input-field pr-12 font-mono-password" autoComplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" />
                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
                                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
