@@ -96,8 +96,8 @@
         return array[0] % max;
     }
 
-    // Sekure's own domains — never offer to save the master password
-    const SEKURE_DOMAINS = ['sekure-woad.vercel.app', 'localhost'];
+    // Sekure's own domains — extension features are redundant here
+    const SEKURE_DOMAINS = ['sekure-woad.vercel.app', 'sekure-cq2t.vercel.app', 'localhost'];
     function isSekureDomain(domain) {
         // Match exact domains, subdomains, and any sekure-*.vercel.app preview deployments
         return SEKURE_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))
@@ -111,6 +111,9 @@
     }
 
     const currentDomain = extractDomain(window.location.href);
+
+    // Skip entirely on Sekure's own pages — the web app handles everything
+    if (isSekureDomain(currentDomain)) return;
 
     // ─── Check auth & load entries ───
     async function init() {
