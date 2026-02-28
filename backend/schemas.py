@@ -4,11 +4,13 @@ from datetime import datetime
 
 
 # --- Auth ---
-class MasterSetup(BaseModel):
+class UserRegister(BaseModel):
+    username: str
     master_password: str
 
 
-class MasterUnlock(BaseModel):
+class UserLogin(BaseModel):
+    username: str
     master_password: str
 
 

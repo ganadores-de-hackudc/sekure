@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { getAuthStatus } from './api';
+import { getAuthStatus, clearToken } from './api';
 import type { AuthStatus } from './types';
 import Layout from './components/Layout';
-import LockScreen from './components/LockScreen';
+import AuthScreen from './components/AuthScreen';
 import Generator from './components/Generator';
 import Checker from './components/Checker';
 import Vault from './components/Vault';
@@ -17,10 +17,15 @@ export default function App() {
             const status = await getAuthStatus();
             setAuth(status);
         } catch {
-            setAuth({ is_setup: false, is_unlocked: false });
+            setAuth({ authenticated: false });
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleLogout = () => {
+        clearToken();
+        setAuth({ authenticated: false });
     };
 
     useEffect(() => {
@@ -38,17 +43,12 @@ export default function App() {
         );
     }
 
-    if (!auth?.is_unlocked) {
-        return (
-            <LockScreen
-                isSetup={auth?.is_setup ?? false}
-                onUnlocked={refreshAuth}
-            />
-        );
+    if (!auth?.authenticated) {
+        return <AuthScreen onAuthenticated={refreshAuth} />;
     }
 
     return (
-        <Layout onLock={refreshAuth}>
+        <Layout username={auth.user?.username ?? ''} onLogout={handleLogout}>
             <Routes>
                 <Route path="/" element={<Navigate to="/generator" replace />} />
                 <Route path="/generator" element={<Generator />} />
