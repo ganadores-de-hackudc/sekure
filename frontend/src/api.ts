@@ -11,6 +11,7 @@ import type {
     GroupInvitation,
     GroupPassword,
     GroupPasswordWithPassword,
+    KidsAccount,
 } from './types';
 
 const BASE = 'https://sekure-woad.vercel.app/api';
@@ -203,3 +204,27 @@ export const getGroupVaultEntry = (groupId: number, entryId: number) =>
 
 export const deleteGroupVaultEntry = (groupId: number, entryId: number) =>
     request<{ message: string }>(`/groups/${groupId}/vault/${entryId}`, { method: 'DELETE' });
+
+// Sekure Kids
+export const listKidsAccounts = () => request<KidsAccount[]>('/kids/accounts');
+export const createKidsAccount = (username: string, password: string) =>
+    request<KidsAccount>('/kids/accounts', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+    });
+export const deleteKidsAccount = (id: number) =>
+    request<{ message: string }>(`/kids/accounts/${id}`, { method: 'DELETE' });
+
+export const listKidsVault = (kidId: number) =>
+    request<VaultEntry[]>(`/kids/accounts/${kidId}/vault`);
+export const createKidsVaultEntry = (kidId: number, data: {
+    title: string; username?: string; url?: string; password: string; notes?: string;
+}) =>
+    request<VaultEntry>(`/kids/accounts/${kidId}/vault`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+export const getKidsVaultEntry = (kidId: number, entryId: number) =>
+    request<VaultEntryWithPassword>(`/kids/accounts/${kidId}/vault/${entryId}`);
+export const deleteKidsVaultEntry = (kidId: number, entryId: number) =>
+    request<{ message: string }>(`/kids/accounts/${kidId}/vault/${entryId}`, { method: 'DELETE' });

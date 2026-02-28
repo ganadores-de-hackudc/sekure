@@ -18,6 +18,7 @@ from schemas import (
     VaultEntryCreate, VaultEntryUpdate, VaultEntryOut, VaultEntryWithPassword,
     GroupCreate, GroupOut, GroupMemberOut, GroupInvite, GroupInvitationOut,
     GroupPasswordCreate, GroupPasswordOut, GroupPasswordWithPassword,
+    KidsAccountCreate, KidsAccountOut,
 )
 from crypto import (
     generate_salt, derive_key, hash_master_password,
@@ -36,7 +37,13 @@ def _load_session(token: str, db: Session) -> dict | None:
     if not sess:
         return None
     key = base64.b64decode(sess.encryption_key)
-    return {"user_id": sess.user_id, "username": sess.username, "key": key}
+    user = db.query(User).filter(User.id == sess.user_id).first()
+    return {
+        "user_id": sess.user_id,
+        "username": sess.username,
+        "key": key,
+        "is_kids_account": bool(user.is_kids_account) if user else False,
+    }
 
 
 @asynccontextmanager
@@ -85,7 +92,11 @@ def auth_status(authorization: str = Header(default=""), db: Session = Depends(g
         return {"authenticated": False}
     return {
         "authenticated": True,
-        "user": {"id": session_data["user_id"], "username": session_data["username"]},
+        "user": {
+            "id": session_data["user_id"],
+            "username": session_data["username"],
+            "is_kids_account": session_data.get("is_kids_account", False),
+        },
     }
 
 
@@ -123,7 +134,7 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
     db.add(sess)
     db.commit()
 
-    return {"token": token, "user": {"id": user.id, "username": user.username}}
+    return {"token": token, "user": {"id": user.id, "username": user.username, "is_kids_account": False}}
 
 
 @app.post("/api/auth/login")
@@ -147,7 +158,7 @@ def login_user(data: UserLogin, db: Session = Depends(get_db)):
     db.add(sess)
     db.commit()
 
-    return {"token": token, "user": {"id": user.id, "username": user.username}}
+    return {"token": token, "user": {"id": user.id, "username": user.username, "is_kids_account": bool(user.is_kids_account)}}
 
 
 @app.post("/api/auth/logout")
@@ -828,6 +839,194 @@ def delete_group_vault_entry(
         raise HTTPException(403, "No eres miembro de este grupo.")
 
     entry = db.query(GroupPassword).filter(GroupPassword.id == entry_id, GroupPassword.group_id == group_id).first()
+    if not entry:
+        raise HTTPException(404, "Entrada no encontrada.")
+
+    db.delete(entry)
+    db.commit()
+    return {"message": "Entrada eliminada."}
+
+
+# ==================== SEKURE KIDS ====================
+
+@app.get("/api/kids/accounts", response_model=list[KidsAccountOut])
+def list_kids_accounts(session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """List kids accounts created by the current user."""
+    user_id = session["user_id"]
+    # Only normal users can have kids accounts
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and user.is_kids_account:
+        raise HTTPException(403, "Las cuentas kids no pueden crear subcuentas.")
+    kids = db.query(User).filter(User.parent_id == user_id).all()
+    return [
+        KidsAccountOut(id=k.id, username=k.username, created_at=k.created_at)
+        for k in kids
+    ]
+
+
+@app.post("/api/kids/accounts", response_model=KidsAccountOut)
+def create_kids_account(data: KidsAccountCreate, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Create a new kids account."""
+    user_id = session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and user.is_kids_account:
+        raise HTTPException(403, "Las cuentas kids no pueden crear subcuentas.")
+
+    if len(data.username.strip()) < 3:
+        raise HTTPException(400, "El nombre de usuario debe tener al menos 3 caracteres.")
+    if len(data.password) < 4:
+        raise HTTPException(400, "La contraseña debe tener al menos 4 caracteres.")
+
+    existing = db.query(User).filter(User.username == data.username.strip()).first()
+    if existing:
+        raise HTTPException(400, "El nombre de usuario ya está en uso.")
+
+    salt = generate_salt()
+    password_hash = hash_master_password(data.password, salt)
+
+    kid = User(
+        username=data.username.strip(),
+        password_hash=password_hash,
+        salt=base64.b64encode(salt).decode("utf-8"),
+        is_kids_account=True,
+        parent_id=user_id,
+    )
+    db.add(kid)
+    db.commit()
+    db.refresh(kid)
+
+    return KidsAccountOut(id=kid.id, username=kid.username, created_at=kid.created_at)
+
+
+@app.delete("/api/kids/accounts/{kid_id}")
+def delete_kids_account(kid_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Delete a kids account. Only the parent can delete."""
+    user_id = session["user_id"]
+    kid = db.query(User).filter(User.id == kid_id, User.parent_id == user_id).first()
+    if not kid:
+        raise HTTPException(404, "Cuenta no encontrada.")
+    db.delete(kid)
+    db.commit()
+    return {"message": "Cuenta eliminada."}
+
+
+# --- Helper to verify parent access to kid's vault ---
+def _get_kid_for_parent(kid_id: int, user_id: int, db: Session) -> User:
+    kid = db.query(User).filter(User.id == kid_id).first()
+    if not kid:
+        raise HTTPException(404, "Cuenta no encontrada.")
+    # Allow access if: parent owns this kid, OR user IS this kid
+    if kid.parent_id == user_id or kid.id == user_id:
+        return kid
+    raise HTTPException(403, "No tienes acceso a esta cuenta.")
+
+
+def _get_kid_encryption_key(kid: User, db: Session) -> bytes:
+    """Get or derive the encryption key for a kid's vault."""
+    # Check if there's an active session for the kid
+    kid_session = db.query(UserSession).filter(UserSession.user_id == kid.id).first()
+    if kid_session:
+        return base64.b64decode(kid_session.encryption_key)
+    # Otherwise, we need to derive it from the kid's salt with a default approach
+    # For kids accounts, we store a derived key at creation time
+    salt = base64.b64decode(kid.salt)
+    # Use a deterministic key derivation from the salt alone for parent access
+    from crypto import derive_key
+    # We use a fixed passphrase derived from parent relationship
+    key = derive_key(f"sekure_kids_{kid.id}_{kid.parent_id}", salt)
+    return key
+
+
+@app.get("/api/kids/accounts/{kid_id}/vault")
+def list_kids_vault(kid_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """List vault entries for a kids account."""
+    user_id = session["user_id"]
+    kid = _get_kid_for_parent(kid_id, user_id, db)
+
+    entries = db.query(Password).filter(Password.user_id == kid.id).order_by(Password.updated_at.desc()).all()
+    return [
+        {
+            "id": e.id,
+            "title": e.title,
+            "username": e.username,
+            "url": e.url,
+            "notes": e.notes,
+            "is_favorite": e.is_favorite,
+            "created_at": e.created_at,
+            "updated_at": e.updated_at,
+            "tags": [],
+        }
+        for e in entries
+    ]
+
+
+@app.post("/api/kids/accounts/{kid_id}/vault")
+def create_kids_vault_entry(kid_id: int, data: VaultEntryCreate, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Create a vault entry for a kids account."""
+    user_id = session["user_id"]
+    kid = _get_kid_for_parent(kid_id, user_id, db)
+    key = _get_kid_encryption_key(kid, db)
+
+    encrypted, iv = encrypt_password(data.password, key)
+    entry = Password(
+        user_id=kid.id,
+        title=data.title,
+        username=data.username or "",
+        url=data.url or "",
+        encrypted_password=encrypted,
+        iv=iv,
+        notes=data.notes or "",
+        is_favorite=False,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return {
+        "id": entry.id,
+        "title": entry.title,
+        "username": entry.username,
+        "url": entry.url,
+        "notes": entry.notes,
+        "is_favorite": entry.is_favorite,
+        "created_at": entry.created_at,
+        "updated_at": entry.updated_at,
+        "tags": [],
+    }
+
+
+@app.get("/api/kids/accounts/{kid_id}/vault/{entry_id}")
+def get_kids_vault_entry(kid_id: int, entry_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Get a single vault entry (with decrypted password) for a kids account."""
+    user_id = session["user_id"]
+    kid = _get_kid_for_parent(kid_id, user_id, db)
+    key = _get_kid_encryption_key(kid, db)
+
+    entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == kid.id).first()
+    if not entry:
+        raise HTTPException(404, "Entrada no encontrada.")
+
+    decrypted = decrypt_password(entry.encrypted_password, entry.iv, key)
+    return {
+        "id": entry.id,
+        "title": entry.title,
+        "username": entry.username,
+        "url": entry.url,
+        "notes": entry.notes,
+        "password": decrypted,
+        "is_favorite": entry.is_favorite,
+        "created_at": entry.created_at,
+        "updated_at": entry.updated_at,
+        "tags": [],
+    }
+
+
+@app.delete("/api/kids/accounts/{kid_id}/vault/{entry_id}")
+def delete_kids_vault_entry(kid_id: int, entry_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Delete a vault entry from a kids account."""
+    user_id = session["user_id"]
+    kid = _get_kid_for_parent(kid_id, user_id, db)
+
+    entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == kid.id).first()
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 

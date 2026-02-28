@@ -98,7 +98,19 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                     ))}
                 </nav>
 
-                <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-4">
+                {/* Sekure KIDS */}
+                <div className="border-t border-gray-200 dark:border-gray-800 pt-3 mt-3">
+                    <NavLink
+                        to="/kids"
+                        className={({ isActive }) =>
+                            isActive ? 'sidebar-link-active' : 'sidebar-link'
+                        }
+                    >
+                        <img src="/sekure-kids-logo.svg" alt="sekure KIDS" className="h-5" />
+                    </NavLink>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
                     <div className="flex items-center gap-2 px-4 py-2 mb-2">
                         <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{username}</span>
@@ -147,7 +159,20 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                             ))}
                         </nav>
 
-                        <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-4">
+                        {/* Sekure KIDS */}
+                        <div className="border-t border-gray-200 dark:border-gray-800 pt-3 mt-3">
+                            <NavLink
+                                to="/kids"
+                                onClick={() => setSidebarOpen(false)}
+                                className={({ isActive }) =>
+                                    isActive ? 'sidebar-link-active' : 'sidebar-link'
+                                }
+                            >
+                                <img src="/sekure-kids-logo.svg" alt="sekure KIDS" className="h-5" />
+                            </NavLink>
+                        </div>
+
+                        <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
                             <div className="flex items-center gap-2 px-4 py-2 mb-2">
                                 <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                 <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{username}</span>
