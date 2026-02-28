@@ -24,8 +24,65 @@ async function apiRequest(url, options = {}) {
     return res.json();
 }
 
+// ─── Biometric verification via popup window ───
+let _bioVerifyResolve = null;
+let _bioVerifyWindowId = null;
+
+async function requireBioVerification() {
+    const { sekure_bio_enabled } = await chrome.storage.local.get('sekure_bio_enabled');
+    if (!sekure_bio_enabled) return true; // bio not enabled, allow
+
+    return new Promise((resolve) => {
+        _bioVerifyResolve = resolve;
+        chrome.windows.create({
+            url: chrome.runtime.getURL('verify.html'),
+            type: 'popup',
+            width: 380,
+            height: 320,
+            focused: true,
+        }).then((win) => {
+            _bioVerifyWindowId = win.id;
+        }).catch(() => {
+            _bioVerifyResolve = null;
+            resolve(false);
+        });
+
+        // Timeout after 60 seconds
+        setTimeout(() => {
+            if (_bioVerifyResolve === resolve) {
+                _bioVerifyResolve = null;
+                _bioVerifyWindowId = null;
+                resolve(false);
+            }
+        }, 60000);
+    });
+}
+
+// Close verification window if user dismisses it without completing
+chrome.windows.onRemoved.addListener((windowId) => {
+    if (windowId === _bioVerifyWindowId && _bioVerifyResolve) {
+        _bioVerifyResolve(false);
+        _bioVerifyResolve = null;
+        _bioVerifyWindowId = null;
+    }
+});
+
 // ─── Message handler ───
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'SEKURE_BIO_RESULT') {
+        if (_bioVerifyResolve) {
+            _bioVerifyResolve(msg.success);
+            _bioVerifyResolve = null;
+        }
+        // Close the verification window
+        if (_bioVerifyWindowId) {
+            chrome.windows.remove(_bioVerifyWindowId).catch(() => { });
+            _bioVerifyWindowId = null;
+        }
+        sendResponse({ ok: true });
+        return true;
+    }
+
     if (msg.type === 'SEKURE_GET_ENTRIES') {
         handleGetEntries(msg.domain).then(sendResponse).catch(e => sendResponse({ error: e.message }));
         return true; // keep channel open for async response
@@ -44,7 +101,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 
     if (msg.type === 'SEKURE_GET_DECRYPTED') {
-        handleGetDecrypted(msg.entryId).then(sendResponse).catch(e => sendResponse({ error: e.message }));
+        // If request comes from a content script (sender.tab), gate behind bio
+        (async () => {
+            try {
+                if (sender.tab) {
+                    const verified = await requireBioVerification();
+                    if (!verified) {
+                        sendResponse({ error: 'Verificación cancelada' });
+                        return;
+                    }
+                }
+                const result = await handleGetDecrypted(msg.entryId);
+                sendResponse(result);
+            } catch (e) {
+                sendResponse({ error: e.message });
+            }
+        })();
         return true;
     }
 });

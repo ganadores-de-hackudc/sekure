@@ -270,13 +270,30 @@
             item.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+
+                // Show loading state while waiting for (possible) bio verification
+                const origHTML = item.innerHTML;
+                item.style.opacity = '0.6';
+                item.style.pointerEvents = 'none';
+                const loadingDiv = item.querySelector('div[style*="flex:1"]');
+                if (loadingDiv) loadingDiv.innerHTML = '<div style="font-size:12px;color:#9b1b2f;font-weight:500;">Verificando identidad…</div>';
+
                 try {
                     const res = await chrome.runtime.sendMessage({ type: 'SEKURE_GET_DECRYPTED', entryId: entry.id });
                     if (res && !res.error) {
                         fillCredentials(field, entry.username || '', res.password);
                         removeDropdown();
+                    } else if (res?.error) {
+                        // Restore item on failure (e.g. bio cancelled)
+                        item.innerHTML = origHTML;
+                        item.style.opacity = '1';
+                        item.style.pointerEvents = 'auto';
                     }
-                } catch { }
+                } catch {
+                    item.innerHTML = origHTML;
+                    item.style.opacity = '1';
+                    item.style.pointerEvents = 'auto';
+                }
             });
 
             dropdown.appendChild(item);
@@ -846,19 +863,7 @@
         }, 15000);
     }
 
-    // ─── Listen for autofill messages from popup ───
-    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-        if (msg.type === 'SEKURE_AUTOFILL') {
-            const pwField = document.querySelector('input[type="password"]:focus')
-                || document.querySelector('input[type="password"]');
-            if (pwField) {
-                fillCredentials(pwField, msg.username, msg.password);
-                sendResponse({ success: true });
-            } else {
-                sendResponse({ success: false, error: 'No password field found' });
-            }
-        }
-    });
+
 
     function escapeHtml(text) {
         const el = document.createElement('span');

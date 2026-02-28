@@ -92,10 +92,13 @@ async function registerBio() {
     if (!credential) throw new Error('Cancelado');
     const rawId = Array.from(new Uint8Array(credential.rawId));
     localStorage.setItem('sekure_bio_ext', JSON.stringify({ credentialId: rawId }));
+    // Sync flag to chrome.storage.local so background service worker can check it
+    await chrome.storage.local.set({ sekure_bio_enabled: true });
 }
 
 function disableBio() {
     localStorage.removeItem('sekure_bio_ext');
+    chrome.storage.local.remove('sekure_bio_enabled');
 }
 
 async function requireBio() {
@@ -278,12 +281,6 @@ function createPasswordItem(entry, showCopyBtn = true) {
                     <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
                 </svg>
             </button>
-            <button class="btn-ghost fill-btn" title="Autocompletar en la página">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-            </button>
         </div>
     `;
 
@@ -319,32 +316,6 @@ function createPasswordItem(entry, showCopyBtn = true) {
         } catch (err) {
             console.error('Error al copiar contraseña:', err);
             const msg = (err && err.message) ? err.message : 'Error al copiar';
-            if (msg.includes('Sesión expirada') || msg.includes('Cierra sesión')) {
-                showLogin();
-            }
-            showToast(msg, 'error');
-        }
-    });
-
-    // Autofill in page (requires master password confirmation)
-    div.querySelector('.fill-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        try {
-            await requireBio();
-            const pw = await fetchDecryptedPassword(entry.id);
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (tab?.id) {
-                await chrome.tabs.sendMessage(tab.id, {
-                    type: 'SEKURE_AUTOFILL',
-                    username: entry.username || '',
-                    password: pw,
-                });
-                showToast('Credenciales introducidas');
-                setTimeout(() => window.close(), 600);
-            }
-        } catch (err) {
-            if (err && err.message === 'Cancelado') return;
-            const msg = (err && err.message) ? err.message : 'Error al autocompletar';
             if (msg.includes('Sesión expirada') || msg.includes('Cierra sesión')) {
                 showLogin();
             }
