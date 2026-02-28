@@ -189,6 +189,11 @@ class KidsAccountCreate(BaseModel):
     password: str
 
 
+class KidsAccountUpdate(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+
 class KidsAccountOut(BaseModel):
     id: int
     username: str
