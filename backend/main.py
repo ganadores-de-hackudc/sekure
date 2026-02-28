@@ -104,8 +104,17 @@ def auth_status(authorization: str = Header(default=""), db: Session = Depends(g
 def register_user(data: UserRegister, db: Session = Depends(get_db)):
     if len(data.username.strip()) < 3:
         raise HTTPException(400, "El nombre de usuario debe tener al menos 3 caracteres.")
-    if len(data.master_password) < 8:
-        raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres.")
+    pw = data.master_password
+    if len(pw) < 12:
+        raise HTTPException(400, "La contraseña debe tener al menos 12 caracteres.")
+    if not any(c.isupper() for c in pw):
+        raise HTTPException(400, "La contraseña debe incluir al menos una mayúscula.")
+    if not any(c.islower() for c in pw):
+        raise HTTPException(400, "La contraseña debe incluir al menos una minúscula.")
+    if not any(c.isdigit() for c in pw):
+        raise HTTPException(400, "La contraseña debe incluir al menos un número.")
+    if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in pw):
+        raise HTTPException(400, "La contraseña debe incluir al menos un carácter especial.")
 
     existing = db.query(User).filter(User.username == data.username.strip()).first()
     if existing:

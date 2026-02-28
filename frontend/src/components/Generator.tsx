@@ -155,22 +155,15 @@ export default function Generator() {
                     {config.method === 'passphrase' && (
                         <>
                             <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-sm text-gray-600 dark:text-gray-300">{t('gen.num_words')}</label>
-                                    <span className="text-sm font-mono text-sekure-600 dark:text-sekure-400">{config.num_words}</span>
-                                </div>
-                                <input type="range" min={3} max={10} value={config.num_words} onChange={(e) => setConfig({ ...config, num_words: +e.target.value })} className="w-full accent-sekure-500" />
-                            </div>
-                            <div>
                                 <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">{t('gen.separator')}</label>
-                                <div className="flex gap-2">
-                                    {['-', '.', '_', ' ', '~'].map((sep) => (
+                                <div className="flex gap-2 flex-wrap">
+                                    {['-', '.', '_', ' ', '~', ''].map((sep) => (
                                         <button key={sep} onClick={() => setConfig({ ...config, separator: sep })}
                                             className={`w-10 h-10 rounded-md font-mono text-lg flex items-center justify-center border transition-colors ${config.separator === sep
                                                 ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400'
                                                 : 'border-gray-200 text-gray-500 hover:border-gray-300 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600'
                                                 }`}
-                                        >{sep === ' ' ? '⎵' : sep}</button>
+                                        >{sep === ' ' ? '⎵' : sep === '' ? '∅' : sep}</button>
                                     ))}
                                 </div>
                             </div>
@@ -208,6 +201,9 @@ export default function Generator() {
                                         <Plus className="w-4 h-4" />
                                         {t('gen.add_custom_word')}
                                     </button>
+                                    {config.custom_words.filter(w => w.trim()).length < 2 && (
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{t('gen.min_custom_words')}</p>
+                                    )}
                                 </div>
                             </div>
                         </>
@@ -223,7 +219,7 @@ export default function Generator() {
                         </div>
                     )}
 
-                    <button onClick={generate} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
+                    <button onClick={generate} disabled={loading || (config.method === 'passphrase' && config.custom_words.filter(w => w.trim()).length < 2)} className="btn-primary w-full flex items-center justify-center gap-2">
                         {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Zap className="w-5 h-5" />{t('gen.generate')}</>}
                     </button>
                 </div>

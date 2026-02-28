@@ -3,7 +3,7 @@ import { register, login } from '../api';
 import { useTheme } from '../ThemeContext';
 import { useLanguage, LANGUAGES } from '../i18n';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, ArrowRight, UserPlus, LogIn, Moon, Sun, Globe, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, UserPlus, LogIn, Moon, Sun, Globe, ChevronDown, Check, X } from 'lucide-react';
 import { useRef, useEffect } from 'react';
 import RecoveryCodeScreen from './RecoveryCodeScreen';
 import RecoverAccountScreen from './RecoverAccountScreen';
@@ -60,8 +60,12 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                 toast.error(t('auth.passwords_mismatch'));
                 return;
             }
-            if (password.length < 8) {
+            if (password.length < 12) {
                 toast.error(t('auth.password_min_length'));
+                return;
+            }
+            if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+                toast.error(t('auth.password_requirements'));
                 return;
             }
             if (username.trim().length < 3) {
@@ -236,13 +240,39 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                         </div>
 
                         {mode === 'register' && (
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder={t('auth.confirm_password')}
-                                className="input-field"
-                            />
+                            <>
+                                <div className="text-left space-y-1 px-1">
+                                    {[
+                                        { met: password.length >= 12, label: t('auth.req_length') },
+                                        { met: /[A-Z]/.test(password), label: t('auth.req_uppercase') },
+                                        { met: /[a-z]/.test(password), label: t('auth.req_lowercase') },
+                                        { met: /[0-9]/.test(password), label: t('auth.req_digit') },
+                                        { met: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password), label: t('auth.req_special') },
+                                    ].map(({ met, label }) => (
+                                        <div key={label} className={`flex items-center gap-2 text-xs transition-colors ${
+                                            !password ? 'text-gray-400 dark:text-gray-500'
+                                            : met ? 'text-green-600 dark:text-green-400'
+                                            : 'text-red-500 dark:text-red-400'
+                                        }`}>
+                                            {!password ? (
+                                                <div className="w-3.5 h-3.5 rounded-full border border-gray-300 dark:border-gray-600" />
+                                            ) : met ? (
+                                                <Check className="w-3.5 h-3.5" />
+                                            ) : (
+                                                <X className="w-3.5 h-3.5" />
+                                            )}
+                                            <span>{label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder={t('auth.confirm_password')}
+                                    className="input-field"
+                                />
+                            </>
                         )}
 
                         <button
