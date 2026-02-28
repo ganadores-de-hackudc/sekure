@@ -900,11 +900,13 @@ def delete_group_vault_entry(
     session=Depends(get_current_session),
     db: Session = Depends(get_db),
 ):
-    """Delete a password from a group vault. Any member can delete."""
+    """Delete a password from a group vault. Only the group owner can delete."""
     user_id = session["user_id"]
-    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
-    if not is_member:
-        raise HTTPException(403, "No eres miembro de este grupo.")
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id != user_id:
+        raise HTTPException(403, "Solo el creador del grupo puede eliminar contraseñas.")
 
     entry = db.query(GroupPassword).filter(GroupPassword.id == entry_id, GroupPassword.group_id == group_id).first()
     if not entry:
@@ -913,6 +915,60 @@ def delete_group_vault_entry(
     db.delete(entry)
     db.commit()
     return {"message": "Entrada eliminada."}
+
+
+@app.post("/api/groups/{group_id}/vault/import/{entry_id}", response_model=GroupPasswordOut, status_code=201)
+def import_vault_entry_to_group(
+    group_id: int,
+    entry_id: int,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Import a personal vault entry into a group vault."""
+    user_id = session["user_id"]
+    key = session["key"]
+
+    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+    if not is_member:
+        raise HTTPException(403, "No eres miembro de este grupo.")
+
+    # Get the personal vault entry
+    personal_entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
+    if not personal_entry:
+        raise HTTPException(404, "Entrada no encontrada en tu bóveda.")
+
+    # Decrypt with user key, re-encrypt with group key
+    decrypted = decrypt_password(personal_entry.encrypted_password, personal_entry.iv, key)
+    group = db.query(Group).filter(Group.id == group_id).first()
+    group_key = base64.b64decode(group.encryption_key)
+    encrypted, iv = encrypt_password(decrypted, group_key)
+
+    group_entry = GroupPassword(
+        group_id=group_id,
+        added_by=user_id,
+        title=personal_entry.title,
+        username=personal_entry.username,
+        url=personal_entry.url,
+        encrypted_password=encrypted,
+        iv=iv,
+        notes=personal_entry.notes,
+    )
+    db.add(group_entry)
+    db.commit()
+    db.refresh(group_entry)
+
+    return GroupPasswordOut(
+        id=group_entry.id,
+        group_id=group_entry.group_id,
+        title=group_entry.title,
+        username=group_entry.username,
+        url=group_entry.url,
+        notes=group_entry.notes,
+        added_by=group_entry.added_by,
+        added_by_username=group_entry.added_by_user.username,
+        created_at=group_entry.created_at,
+        updated_at=group_entry.updated_at,
+    )
 
 
 # ==================== SEKURE KIDS ====================

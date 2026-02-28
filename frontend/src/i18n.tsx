@@ -219,6 +219,11 @@ const translations: Record<Lang, Record<string, string>> = {
         'groups.password_saved': 'Contraseña guardada en el grupo',
         'groups.confirm_delete_entry': '¿Estás seguro de eliminar esta contraseña?',
         'groups.entry_deleted': 'Contraseña eliminada',
+        'groups.import_password': 'Importar contraseña',
+        'groups.import_search': 'Buscar en tu bóveda...',
+        'groups.import_empty': 'No tienes contraseñas para importar',
+        'groups.import_btn': 'Importar',
+        'groups.imported': 'Contraseña importada al grupo',
 
         // Sekure Kids
         'kids.subtitle': 'Gestiona las cuentas de tus hijos',
@@ -524,6 +529,11 @@ const translations: Record<Lang, Record<string, string>> = {
         'groups.password_saved': 'Password saved to group',
         'groups.confirm_delete_entry': 'Are you sure you want to delete this password?',
         'groups.entry_deleted': 'Password deleted',
+        'groups.import_password': 'Import password',
+        'groups.import_search': 'Search your vault...',
+        'groups.import_empty': 'You have no passwords to import',
+        'groups.import_btn': 'Import',
+        'groups.imported': 'Password imported to group',
 
         // Sekure Kids
         'kids.subtitle': 'Manage your children\'s accounts',
@@ -826,6 +836,11 @@ const translations: Record<Lang, Record<string, string>> = {
         'groups.password_saved': 'Contrasinal gardado no grupo',
         'groups.confirm_delete_entry': 'Estás seguro de eliminar este contrasinal?',
         'groups.entry_deleted': 'Contrasinal eliminado',
+        'groups.import_password': 'Importar contrasinal',
+        'groups.import_search': 'Buscar na túa bóveda...',
+        'groups.import_empty': 'Non tes contrasinais para importar',
+        'groups.import_btn': 'Importar',
+        'groups.imported': 'Contrasinal importado ao grupo',
 
         // Sekure Kids
         'kids.subtitle': 'Xestiona as contas dos teus fillos',

@@ -5,14 +5,15 @@ import {
     getPendingInvitations, acceptInvitation, ignoreInvitation,
     listGroupVault, createGroupVaultEntry, getGroupVaultEntry, deleteGroupVaultEntry,
     listGroupInvitations, cancelInvitation,
+    listVault, importVaultEntryToGroup,
 } from '../api';
-import type { Group, GroupInvitation, GroupPassword, GroupPasswordWithPassword } from '../types';
+import type { Group, GroupInvitation, GroupPassword, GroupPasswordWithPassword, VaultEntry } from '../types';
 import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
 import {
     Users, Plus, Bell, ArrowLeft, Trash2, UserPlus, UserMinus,
     Eye, EyeOff, Copy, Globe, User, ExternalLink, Crown, X,
-    Save, Lock, LogOut, XCircle,
+    Save, Lock, LogOut, XCircle, Download,
 } from 'lucide-react';
 
 // ─── Add Password Modal ───
@@ -83,12 +84,99 @@ function AddGroupPasswordModal({ groupId, onClose }: { groupId: number; onClose:
     );
 }
 
+// ─── Import Password Modal ───
+function ImportPasswordModal({ groupId, onClose }: { groupId: number; onClose: () => void }) {
+    const { t } = useLanguage();
+    const [vaultEntries, setVaultEntries] = useState<VaultEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [importing, setImporting] = useState<number | null>(null);
+    const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const entries = await listVault();
+                setVaultEntries(entries);
+            } catch (err: any) { toast.error(err.message); }
+            finally { setLoading(false); }
+        })();
+    }, []);
+
+    const handleImport = async (entryId: number) => {
+        setImporting(entryId);
+        try {
+            await importVaultEntryToGroup(groupId, entryId);
+            toast.success(t('groups.imported'));
+            onClose();
+        } catch (err: any) { toast.error(err.message); }
+        finally { setImporting(null); }
+    };
+
+    const filtered = vaultEntries.filter(e =>
+        e.title.toLowerCase().includes(search.toLowerCase()) ||
+        (e.username && e.username.toLowerCase().includes(search.toLowerCase())) ||
+        (e.url && e.url.toLowerCase().includes(search.toLowerCase()))
+    );
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 dark:bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-lg card animate-slide-up max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">{t('groups.import_password')}</h3>
+                    <button onClick={onClose} className="btn-ghost p-2"><X className="w-5 h-5" /></button>
+                </div>
+                <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder={t('groups.import_search')}
+                    className="input-field mb-4"
+                    autoFocus
+                />
+                {loading ? (
+                    <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-sekure-500 border-t-transparent rounded-full animate-spin" /></div>
+                ) : filtered.length === 0 ? (
+                    <p className="text-gray-400 dark:text-gray-500 text-center py-8">{t('groups.import_empty')}</p>
+                ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                        {filtered.map(entry => (
+                            <div key={entry.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center flex-shrink-0">
+                                    {entry.url ? <Globe className="w-4 h-4 text-gray-400" /> : <Lock className="w-4 h-4 text-gray-400" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-800 dark:text-white truncate text-sm">{entry.title}</p>
+                                    {entry.username && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{entry.username}</p>}
+                                </div>
+                                <button
+                                    onClick={() => handleImport(entry.id)}
+                                    disabled={importing !== null}
+                                    className="btn-primary py-1.5 px-3 text-sm flex items-center gap-1.5 flex-shrink-0"
+                                >
+                                    {importing === entry.id
+                                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        : <><Download className="w-3.5 h-3.5" />{t('groups.import_btn')}</>}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div className="flex justify-end pt-4">
+                    <button onClick={onClose} className="btn-secondary">{t('save.cancel')}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Group Vault View ───
 function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack: () => void; currentUserId: number }) {
     const { t } = useLanguage();
     const [entries, setEntries] = useState<GroupPassword[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [showPassword, setShowPassword] = useState<Record<number, boolean>>({});
     const [decryptedPasswords, setDecryptedPasswords] = useState<Record<number, string>>({});
     const [showInviteInput, setShowInviteInput] = useState(false);
@@ -189,6 +277,9 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                             <LogOut className="w-5 h-5" />{t('groups.leave')}
                         </button>
                     )}
+                    <button onClick={() => setShowImportModal(true)} className="btn-secondary flex items-center gap-2">
+                        <Download className="w-5 h-5" />{t('groups.import_password')}
+                    </button>
                     <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
                         <Plus className="w-5 h-5" />{t('groups.add_password')}
                     </button>
@@ -285,7 +376,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                                     </button>
                                     <button onClick={() => handleCopyPassword(entry.id)} className="btn-ghost p-2" title={t('vault.copy')}><Copy className="w-4 h-4" /></button>
                                     {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
-                                    <button onClick={() => handleDeleteEntry(entry.id)} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>
+                                    {isOwner && <button onClick={() => handleDeleteEntry(entry.id)} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>}
                                 </div>
                             </div>
                         </div>
@@ -294,6 +385,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
             )}
 
             {showAddModal && <AddGroupPasswordModal groupId={group.id} onClose={() => { setShowAddModal(false); fetchData(); }} />}
+            {showImportModal && <ImportPasswordModal groupId={group.id} onClose={() => { setShowImportModal(false); fetchData(); }} />}
         </div>
     );
 }

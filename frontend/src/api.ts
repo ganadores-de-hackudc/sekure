@@ -214,6 +214,9 @@ export const getGroupVaultEntry = (groupId: number, entryId: number) =>
 export const deleteGroupVaultEntry = (groupId: number, entryId: number) =>
     request<{ message: string }>(`/groups/${groupId}/vault/${entryId}`, { method: 'DELETE' });
 
+export const importVaultEntryToGroup = (groupId: number, entryId: number) =>
+    request<GroupPassword>(`/groups/${groupId}/vault/import/${entryId}`, { method: 'POST' });
+
 // Sekure Kids
 export const listKidsAccounts = () => request<KidsAccount[]>('/kids/accounts');
 export const createKidsAccount = (username: string, password: string) =>
