@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { logout } from '../api';
+import { logout, getPendingInvitations } from '../api';
 import { useTheme } from '../ThemeContext';
 import { useLanguage, LANGUAGES } from '../i18n';
 import toast from 'react-hot-toast';
 import {
-    KeyRound, ShieldCheck, Archive,
+    KeyRound, ShieldCheck, Archive, Users,
     LogOut, Menu, X, User, Moon, Sun, Globe, ChevronDown,
 } from 'lucide-react';
 
@@ -18,16 +18,31 @@ interface LayoutProps {
 export default function Layout({ children, username, onLogout }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [langOpen, setLangOpen] = useState(false);
+    const [pendingCount, setPendingCount] = useState(0);
     const langRef = useRef<HTMLDivElement>(null);
     const { theme, toggleTheme } = useTheme();
     const { lang, setLang, t } = useLanguage();
     const location = useLocation();
 
     const navItems = [
+        { to: '/vault', icon: Archive, label: t('nav.vault') },
         { to: '/generator', icon: KeyRound, label: t('nav.generator') },
         { to: '/checker', icon: ShieldCheck, label: t('nav.checker') },
-        { to: '/vault', icon: Archive, label: t('nav.vault') },
+        { to: '/groups', icon: Users, label: t('nav.groups'), badge: pendingCount },
     ];
+
+    // Fetch pending invitation count
+    useEffect(() => {
+        const fetchPending = async () => {
+            try {
+                const inv = await getPendingInvitations();
+                setPendingCount(inv.length);
+            } catch { /* ignore */ }
+        };
+        fetchPending();
+        const interval = setInterval(fetchPending, 15000); // poll every 15s
+        return () => clearInterval(interval);
+    }, []);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -62,7 +77,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                 </div>
 
                 <nav className="flex-1 space-y-2">
-                    {navItems.map(({ to, icon: Icon, label }) => (
+                    {navItems.map(({ to, icon: Icon, label, badge }) => (
                         <NavLink
                             key={to}
                             to={to}
@@ -70,7 +85,14 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                                 isActive ? 'sidebar-link-active' : 'sidebar-link'
                             }
                         >
-                            <Icon className="w-5 h-5" />
+                            <span className="relative">
+                                <Icon className="w-5 h-5" />
+                                {badge != null && badge > 0 && (
+                                    <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                        {badge}
+                                    </span>
+                                )}
+                            </span>
                             {label}
                         </NavLink>
                     ))}
@@ -103,7 +125,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                         </div>
 
                         <nav className="flex-1 space-y-2">
-                            {navItems.map(({ to, icon: Icon, label }) => (
+                            {navItems.map(({ to, icon: Icon, label, badge }) => (
                                 <NavLink
                                     key={to}
                                     to={to}
@@ -112,7 +134,14 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                                         isActive ? 'sidebar-link-active' : 'sidebar-link'
                                     }
                                 >
-                                    <Icon className="w-5 h-5" />
+                                    <span className="relative">
+                                        <Icon className="w-5 h-5" />
+                                        {badge != null && badge > 0 && (
+                                            <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                                {badge}
+                                            </span>
+                                        )}
+                                    </span>
                                     {label}
                                 </NavLink>
                             ))}

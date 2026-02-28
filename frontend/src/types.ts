@@ -67,3 +67,47 @@ export interface AuthResponse {
     token: string;
     user: { id: number; username: string };
 }
+
+// --- Groups ---
+
+export interface GroupMember {
+    id: number;
+    user_id: number;
+    username: string;
+    joined_at: string;
+}
+
+export interface Group {
+    id: number;
+    name: string;
+    owner_id: number;
+    owner_username: string;
+    created_at: string;
+    members: GroupMember[];
+}
+
+export interface GroupInvitation {
+    id: number;
+    group_id: number;
+    group_name: string;
+    inviter_username: string;
+    status: string;
+    created_at: string;
+}
+
+export interface GroupPassword {
+    id: number;
+    group_id: number;
+    title: string;
+    username: string;
+    url: string;
+    notes: string;
+    added_by: number;
+    added_by_username: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface GroupPasswordWithPassword extends GroupPassword {
+    password: string;
+}

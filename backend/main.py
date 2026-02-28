@@ -9,13 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import engine, get_db, Base
-from models import User, UserSession, Password, Tag, password_tags
+from models import User, UserSession, Password, Tag, password_tags, Group, GroupMember, GroupPassword, GroupInvitation
 from schemas import (
     UserRegister, UserLogin,
     TagCreate, TagOut,
     GenerateRequest, GenerateResponse,
     CheckRequest, CheckResponse,
     VaultEntryCreate, VaultEntryUpdate, VaultEntryOut, VaultEntryWithPassword,
+    GroupCreate, GroupOut, GroupMemberOut, GroupInvite, GroupInvitationOut,
+    GroupPasswordCreate, GroupPasswordOut, GroupPasswordWithPassword,
 )
 from crypto import (
     generate_salt, derive_key, hash_master_password,
@@ -412,6 +414,353 @@ def delete_tag(
     db.delete(tag)
     db.commit()
     return {"message": "Etiqueta eliminada."}
+
+
+# ==================== GROUPS ====================
+
+def _group_to_out(group: Group) -> GroupOut:
+    """Convert a Group ORM object to GroupOut schema."""
+    return GroupOut(
+        id=group.id,
+        name=group.name,
+        owner_id=group.owner_id,
+        owner_username=group.owner.username,
+        created_at=group.created_at,
+        members=[
+            GroupMemberOut(
+                id=m.id,
+                user_id=m.user_id,
+                username=m.user.username,
+                joined_at=m.joined_at,
+            )
+            for m in group.members
+        ],
+    )
+
+
+@app.get("/api/groups", response_model=list[GroupOut])
+def list_groups(session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """List all groups the user is a member of."""
+    user_id = session["user_id"]
+    memberships = db.query(GroupMember).filter(GroupMember.user_id == user_id).all()
+    group_ids = [m.group_id for m in memberships]
+    groups = db.query(Group).filter(Group.id.in_(group_ids)).order_by(Group.created_at.desc()).all() if group_ids else []
+    return [_group_to_out(g) for g in groups]
+
+
+@app.post("/api/groups", response_model=GroupOut, status_code=201)
+def create_group(data: GroupCreate, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Create a new group. The creator becomes the owner and first member."""
+    import os as _os
+    user_id = session["user_id"]
+
+    if not data.name.strip():
+        raise HTTPException(400, "El nombre del grupo no puede estar vacío.")
+
+    # Generate a random encryption key for the group vault
+    group_key = _os.urandom(32)
+    group_key_b64 = base64.b64encode(group_key).decode("utf-8")
+
+    group = Group(
+        name=data.name.strip(),
+        owner_id=user_id,
+        encryption_key=group_key_b64,
+    )
+    db.add(group)
+    db.flush()  # get group.id
+
+    # Add owner as first member
+    member = GroupMember(group_id=group.id, user_id=user_id)
+    db.add(member)
+    db.commit()
+    db.refresh(group)
+
+    return _group_to_out(group)
+
+
+# --- Invitation endpoints (MUST be before {group_id} routes) ---
+
+@app.get("/api/groups/invitations/pending", response_model=list[GroupInvitationOut])
+def get_pending_invitations(session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Get all pending invitations for the current user."""
+    user_id = session["user_id"]
+    invitations = db.query(GroupInvitation).filter(
+        GroupInvitation.invitee_id == user_id,
+        GroupInvitation.status == "pending",
+    ).order_by(GroupInvitation.created_at.desc()).all()
+
+    return [
+        GroupInvitationOut(
+            id=inv.id,
+            group_id=inv.group_id,
+            group_name=inv.group.name,
+            inviter_username=inv.inviter.username,
+            status=inv.status,
+            created_at=inv.created_at,
+        )
+        for inv in invitations
+    ]
+
+
+@app.post("/api/groups/invitations/{invitation_id}/accept")
+def accept_invitation(invitation_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Accept a group invitation."""
+    user_id = session["user_id"]
+    invitation = db.query(GroupInvitation).filter(
+        GroupInvitation.id == invitation_id,
+        GroupInvitation.invitee_id == user_id,
+        GroupInvitation.status == "pending",
+    ).first()
+    if not invitation:
+        raise HTTPException(404, "Invitación no encontrada.")
+
+    invitation.status = "accepted"
+    member = GroupMember(group_id=invitation.group_id, user_id=user_id)
+    db.add(member)
+    db.commit()
+    return {"message": "Te has unido al grupo."}
+
+
+@app.post("/api/groups/invitations/{invitation_id}/ignore")
+def ignore_invitation(invitation_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Ignore (reject) a group invitation."""
+    user_id = session["user_id"]
+    invitation = db.query(GroupInvitation).filter(
+        GroupInvitation.id == invitation_id,
+        GroupInvitation.invitee_id == user_id,
+        GroupInvitation.status == "pending",
+    ).first()
+    if not invitation:
+        raise HTTPException(404, "Invitación no encontrada.")
+
+    invitation.status = "ignored"
+    db.commit()
+    return {"message": "Invitación ignorada."}
+
+
+# --- Group detail endpoints ---
+
+@app.get("/api/groups/{group_id}", response_model=GroupOut)
+def get_group(group_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Get group details. Must be a member."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+    if not is_member:
+        raise HTTPException(403, "No eres miembro de este grupo.")
+    return _group_to_out(group)
+
+
+@app.delete("/api/groups/{group_id}")
+def delete_group(group_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Delete a group. Only the owner can delete."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id != user_id:
+        raise HTTPException(403, "Solo el creador puede eliminar el grupo.")
+    db.delete(group)
+    db.commit()
+    return {"message": "Grupo eliminado."}
+
+
+@app.post("/api/groups/{group_id}/invite")
+def invite_to_group(group_id: int, data: GroupInvite, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Invite a user to a group. Only the owner can invite."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id != user_id:
+        raise HTTPException(403, "Solo el creador puede invitar usuarios.")
+
+    invitee = db.query(User).filter(User.username == data.username.strip()).first()
+    if not invitee:
+        raise HTTPException(404, "Usuario no encontrado.")
+    if invitee.id == user_id:
+        raise HTTPException(400, "No puedes invitarte a ti mismo.")
+
+    # Check if already a member
+    existing_member = db.query(GroupMember).filter(
+        GroupMember.group_id == group_id, GroupMember.user_id == invitee.id
+    ).first()
+    if existing_member:
+        raise HTTPException(400, "El usuario ya es miembro del grupo.")
+
+    # Check if there's already a pending invitation
+    existing_invite = db.query(GroupInvitation).filter(
+        GroupInvitation.group_id == group_id,
+        GroupInvitation.invitee_id == invitee.id,
+        GroupInvitation.status == "pending",
+    ).first()
+    if existing_invite:
+        raise HTTPException(400, "Ya existe una invitación pendiente para este usuario.")
+
+    invitation = GroupInvitation(
+        group_id=group_id,
+        inviter_id=user_id,
+        invitee_id=invitee.id,
+    )
+    db.add(invitation)
+    db.commit()
+    return {"message": f"Invitación enviada a {invitee.username}."}
+
+
+@app.post("/api/groups/{group_id}/kick/{target_user_id}")
+def kick_from_group(group_id: int, target_user_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Remove a user from a group. Only owner can kick."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id != user_id:
+        raise HTTPException(403, "Solo el creador puede expulsar usuarios.")
+    if target_user_id == user_id:
+        raise HTTPException(400, "No puedes expulsarte a ti mismo.")
+
+    member = db.query(GroupMember).filter(
+        GroupMember.group_id == group_id, GroupMember.user_id == target_user_id
+    ).first()
+    if not member:
+        raise HTTPException(404, "El usuario no es miembro del grupo.")
+
+    db.delete(member)
+    db.commit()
+    return {"message": "Usuario expulsado del grupo."}
+
+
+# --- Group Vault (passwords) ---
+
+@app.get("/api/groups/{group_id}/vault", response_model=list[GroupPasswordOut])
+def list_group_vault(group_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """List all passwords in a group vault."""
+    user_id = session["user_id"]
+    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+    if not is_member:
+        raise HTTPException(403, "No eres miembro de este grupo.")
+
+    entries = db.query(GroupPassword).filter(GroupPassword.group_id == group_id).order_by(GroupPassword.updated_at.desc()).all()
+    return [
+        GroupPasswordOut(
+            id=e.id,
+            group_id=e.group_id,
+            title=e.title,
+            username=e.username,
+            url=e.url,
+            notes=e.notes,
+            added_by=e.added_by,
+            added_by_username=e.added_by_user.username,
+            created_at=e.created_at,
+            updated_at=e.updated_at,
+        )
+        for e in entries
+    ]
+
+
+@app.post("/api/groups/{group_id}/vault", response_model=GroupPasswordOut, status_code=201)
+def create_group_vault_entry(
+    group_id: int,
+    data: GroupPasswordCreate,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Add a password to a group vault."""
+    user_id = session["user_id"]
+    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+    if not is_member:
+        raise HTTPException(403, "No eres miembro de este grupo.")
+
+    group = db.query(Group).filter(Group.id == group_id).first()
+    group_key = base64.b64decode(group.encryption_key)
+    encrypted, iv = encrypt_password(data.password, group_key)
+
+    entry = GroupPassword(
+        group_id=group_id,
+        added_by=user_id,
+        title=data.title,
+        username=data.username or "",
+        url=data.url or "",
+        encrypted_password=encrypted,
+        iv=iv,
+        notes=data.notes or "",
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+
+    return GroupPasswordOut(
+        id=entry.id,
+        group_id=entry.group_id,
+        title=entry.title,
+        username=entry.username,
+        url=entry.url,
+        notes=entry.notes,
+        added_by=entry.added_by,
+        added_by_username=entry.added_by_user.username,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
+    )
+
+
+@app.get("/api/groups/{group_id}/vault/{entry_id}", response_model=GroupPasswordWithPassword)
+def get_group_vault_entry(
+    group_id: int,
+    entry_id: int,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Get a group vault entry with decrypted password."""
+    user_id = session["user_id"]
+    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+    if not is_member:
+        raise HTTPException(403, "No eres miembro de este grupo.")
+
+    entry = db.query(GroupPassword).filter(GroupPassword.id == entry_id, GroupPassword.group_id == group_id).first()
+    if not entry:
+        raise HTTPException(404, "Entrada no encontrada.")
+
+    group = db.query(Group).filter(Group.id == group_id).first()
+    group_key = base64.b64decode(group.encryption_key)
+    decrypted = decrypt_password(entry.encrypted_password, entry.iv, group_key)
+
+    return GroupPasswordWithPassword(
+        id=entry.id,
+        group_id=entry.group_id,
+        title=entry.title,
+        username=entry.username,
+        url=entry.url,
+        notes=entry.notes,
+        added_by=entry.added_by,
+        added_by_username=entry.added_by_user.username,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
+        password=decrypted,
+    )
+
+
+@app.delete("/api/groups/{group_id}/vault/{entry_id}")
+def delete_group_vault_entry(
+    group_id: int,
+    entry_id: int,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Delete a password from a group vault. Any member can delete."""
+    user_id = session["user_id"]
+    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+    if not is_member:
+        raise HTTPException(403, "No eres miembro de este grupo.")
+
+    entry = db.query(GroupPassword).filter(GroupPassword.id == entry_id, GroupPassword.group_id == group_id).first()
+    if not entry:
+        raise HTTPException(404, "Entrada no encontrada.")
+
+    db.delete(entry)
+    db.commit()
+    return {"message": "Entrada eliminada."}
 
 
 if __name__ == "__main__":

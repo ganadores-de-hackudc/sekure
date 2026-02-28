@@ -9,6 +9,7 @@ import AuthScreen from './components/AuthScreen';
 import Generator from './components/Generator';
 import Checker from './components/Checker';
 import Vault from './components/Vault';
+import Groups from './components/Groups';
 
 function AppContent() {
     const [auth, setAuth] = useState<AuthStatus | null>(null);
@@ -53,11 +54,12 @@ function AppContent() {
     return (
         <Layout username={auth.user?.username ?? ''} onLogout={handleLogout}>
             <Routes>
-                <Route path="/" element={<Navigate to="/generator" replace />} />
+                <Route path="/" element={<Navigate to="/vault" replace />} />
+                <Route path="/vault" element={<Vault />} />
                 <Route path="/generator" element={<Generator />} />
                 <Route path="/checker" element={<Checker />} />
-                <Route path="/vault" element={<Vault />} />
-                <Route path="*" element={<Navigate to="/generator" replace />} />
+                <Route path="/groups" element={<Groups currentUserId={auth.user?.id ?? 0} />} />
+                <Route path="*" element={<Navigate to="/vault" replace />} />
             </Routes>
         </Layout>
     );

@@ -103,3 +103,74 @@ class VaultEntryOut(BaseModel):
 
 class VaultEntryWithPassword(VaultEntryOut):
     password: str
+
+
+# --- Groups ---
+class GroupCreate(BaseModel):
+    name: str
+
+
+class GroupMemberOut(BaseModel):
+    id: int
+    user_id: int
+    username: str
+    joined_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class GroupOut(BaseModel):
+    id: int
+    name: str
+    owner_id: int
+    owner_username: str
+    created_at: datetime
+    members: list[GroupMemberOut]
+
+    class Config:
+        from_attributes = True
+
+
+class GroupInvite(BaseModel):
+    username: str
+
+
+class GroupInvitationOut(BaseModel):
+    id: int
+    group_id: int
+    group_name: str
+    inviter_username: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class GroupPasswordCreate(BaseModel):
+    title: str
+    username: Optional[str] = ""
+    url: Optional[str] = ""
+    password: str
+    notes: Optional[str] = ""
+
+
+class GroupPasswordOut(BaseModel):
+    id: int
+    group_id: int
+    title: str
+    username: str
+    url: str
+    notes: str
+    added_by: int
+    added_by_username: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class GroupPasswordWithPassword(GroupPasswordOut):
+    password: str

@@ -23,6 +23,8 @@ class User(Base):
 
     passwords = relationship("Password", back_populates="user", cascade="all, delete-orphan")
     tags = relationship("Tag", back_populates="user", cascade="all, delete-orphan")
+    owned_groups = relationship("Group", back_populates="owner", cascade="all, delete-orphan")
+    group_memberships = relationship("GroupMember", back_populates="user", cascade="all, delete-orphan")
 
 
 class Password(Base):
@@ -70,3 +72,74 @@ class UserSession(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
+
+
+# ==================== GROUPS ====================
+
+class Group(Base):
+    __tablename__ = "groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    encryption_key = Column(String, nullable=False)  # base64-encoded AES key for group vault
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    owner = relationship("User", back_populates="owned_groups")
+    members = relationship("GroupMember", back_populates="group", cascade="all, delete-orphan")
+    passwords = relationship("GroupPassword", back_populates="group", cascade="all, delete-orphan")
+    invitations = relationship("GroupInvitation", back_populates="group", cascade="all, delete-orphan")
+
+
+class GroupMember(Base):
+    __tablename__ = "group_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_group_member"),
+    )
+
+    group = relationship("Group", back_populates="members")
+    user = relationship("User", back_populates="group_memberships")
+
+
+class GroupPassword(Base):
+    __tablename__ = "group_passwords"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    added_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=False)
+    username = Column(String, default="")
+    url = Column(String, default="")
+    encrypted_password = Column(Text, nullable=False)
+    iv = Column(String, nullable=False)
+    notes = Column(Text, default="")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    group = relationship("Group", back_populates="passwords")
+    added_by_user = relationship("User")
+
+
+class GroupInvitation(Base):
+    __tablename__ = "group_invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    inviter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    invitee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    status = Column(String, default="pending")  # pending, accepted, ignored
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "invitee_id", name="uq_group_invitation"),
+    )
+
+    group = relationship("Group", back_populates="invitations")
+    inviter = relationship("User", foreign_keys=[inviter_id])
+    invitee = relationship("User", foreign_keys=[invitee_id])

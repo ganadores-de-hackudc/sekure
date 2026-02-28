@@ -7,6 +7,10 @@ import type {
     VaultEntryWithPassword,
     AuthStatus,
     AuthResponse,
+    Group,
+    GroupInvitation,
+    GroupPassword,
+    GroupPasswordWithPassword,
 } from './types';
 
 const BASE = 'https://sekure-woad.vercel.app/api';
@@ -146,3 +150,47 @@ export const createTag = (name: string, color?: string) =>
     });
 export const deleteTag = (id: number) =>
     request<{ message: string }>(`/tags/${id}`, { method: 'DELETE' });
+
+// Groups
+export const listGroups = () => request<Group[]>('/groups');
+export const createGroup = (name: string) =>
+    request<Group>('/groups', { method: 'POST', body: JSON.stringify({ name }) });
+export const getGroup = (id: number) => request<Group>(`/groups/${id}`);
+export const deleteGroup = (id: number) =>
+    request<{ message: string }>(`/groups/${id}`, { method: 'DELETE' });
+
+export const inviteToGroup = (groupId: number, username: string) =>
+    request<{ message: string }>(`/groups/${groupId}/invite`, {
+        method: 'POST',
+        body: JSON.stringify({ username }),
+    });
+
+export const kickFromGroup = (groupId: number, userId: number) =>
+    request<{ message: string }>(`/groups/${groupId}/kick/${userId}`, { method: 'POST' });
+
+export const getPendingInvitations = () =>
+    request<GroupInvitation[]>('/groups/invitations/pending');
+
+export const acceptInvitation = (invitationId: number) =>
+    request<{ message: string }>(`/groups/invitations/${invitationId}/accept`, { method: 'POST' });
+
+export const ignoreInvitation = (invitationId: number) =>
+    request<{ message: string }>(`/groups/invitations/${invitationId}/ignore`, { method: 'POST' });
+
+// Group Vault
+export const listGroupVault = (groupId: number) =>
+    request<GroupPassword[]>(`/groups/${groupId}/vault`);
+
+export const createGroupVaultEntry = (groupId: number, data: {
+    title: string; username?: string; url?: string; password: string; notes?: string;
+}) =>
+    request<GroupPassword>(`/groups/${groupId}/vault`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+
+export const getGroupVaultEntry = (groupId: number, entryId: number) =>
+    request<GroupPasswordWithPassword>(`/groups/${groupId}/vault/${entryId}`);
+
+export const deleteGroupVaultEntry = (groupId: number, entryId: number) =>
+    request<{ message: string }>(`/groups/${groupId}/vault/${entryId}`, { method: 'DELETE' });
