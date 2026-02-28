@@ -13,8 +13,9 @@ import toast from 'react-hot-toast';
 import {
     Users, Plus, Bell, ArrowLeft, Trash2, UserPlus, UserMinus,
     Eye, EyeOff, Copy, Globe, User, ExternalLink, Crown, X,
-    Save, Lock, LogOut, XCircle, Download,
+    Save, Lock, LogOut, XCircle, Download, Link2,
 } from 'lucide-react';
+import ShareModal from './ShareModal';
 
 // ─── Add Password Modal ───
 function AddGroupPasswordModal({ groupId, onClose }: { groupId: number; onClose: () => void }) {
@@ -177,6 +178,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [shareEntry, setShareEntry] = useState<GroupPassword | null>(null);
     const [showPassword, setShowPassword] = useState<Record<number, boolean>>({});
     const [decryptedPasswords, setDecryptedPasswords] = useState<Record<number, string>>({});
     const [showInviteInput, setShowInviteInput] = useState(false);
@@ -376,6 +378,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                                     </button>
                                     <button onClick={() => handleCopyPassword(entry.id)} className="btn-ghost p-2" title={t('vault.copy')}><Copy className="w-4 h-4" /></button>
                                     {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
+                                    <button onClick={() => setShareEntry(entry)} className="btn-ghost p-2" title={t('share.title')}><Link2 className="w-4 h-4" /></button>
                                     {isOwner && <button onClick={() => handleDeleteEntry(entry.id)} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>}
                                 </div>
                             </div>
@@ -386,6 +389,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
 
             {showAddModal && <AddGroupPasswordModal groupId={group.id} onClose={() => { setShowAddModal(false); fetchData(); }} />}
             {showImportModal && <ImportPasswordModal groupId={group.id} onClose={() => { setShowImportModal(false); fetchData(); }} />}
+            {shareEntry && <ShareModal entryId={shareEntry.id} entryTitle={shareEntry.title} entryUrl={shareEntry.url} groupId={group.id} onClose={() => setShareEntry(null)} />}
         </div>
     );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getVaultEntry, createShareLink } from '../api';
+import { getVaultEntry, getGroupVaultEntry, createShareLink } from '../api';
 import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
 import {
@@ -11,13 +11,14 @@ interface ShareModalProps {
     entryId: number;
     entryTitle: string;
     entryUrl?: string;
+    groupId?: number;
     onClose: () => void;
 }
 
 type ExpiryOption = '1h' | '1d' | '1w' | '1m';
 type AccessMode = 'anyone' | 'specific';
 
-export default function ShareModal({ entryId, entryTitle, entryUrl, onClose }: ShareModalProps) {
+export default function ShareModal({ entryId, entryTitle, entryUrl, groupId, onClose }: ShareModalProps) {
     const { t } = useLanguage();
     const [expiry, setExpiry] = useState<ExpiryOption>('1d');
     const [accessMode, setAccessMode] = useState<AccessMode>('anyone');
@@ -49,8 +50,10 @@ export default function ShareModal({ entryId, entryTitle, entryUrl, onClose }: S
     const handleGenerate = async () => {
         setLoading(true);
         try {
-            // 1. Fetch decrypted password from vault
-            const entry = await getVaultEntry(entryId);
+            // 1. Fetch decrypted password from vault (personal or group)
+            const entry = groupId
+                ? await getGroupVaultEntry(groupId, entryId)
+                : await getVaultEntry(entryId);
 
             // 2. Build the plaintext payload as JSON
             const payload = JSON.stringify({
