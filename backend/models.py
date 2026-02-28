@@ -19,6 +19,7 @@ class User(Base):
     username = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     salt = Column(String, nullable=False)
+    recovery_code_hash = Column(String, nullable=True)  # hashed recovery code
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_kids_account = Column(Boolean, default=False)
     parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)

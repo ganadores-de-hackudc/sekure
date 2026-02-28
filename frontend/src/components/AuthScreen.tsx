@@ -5,6 +5,8 @@ import { useLanguage, LANGUAGES } from '../i18n';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, ArrowRight, UserPlus, LogIn, Moon, Sun, Globe, ChevronDown } from 'lucide-react';
 import { useRef, useEffect } from 'react';
+import RecoveryCodeScreen from './RecoveryCodeScreen';
+import RecoverAccountScreen from './RecoverAccountScreen';
 
 type AuthMode = 'login' | 'register';
 
@@ -23,6 +25,12 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     const langRef = useRef<HTMLDivElement>(null);
     const { theme, toggleTheme } = useTheme();
     const { lang, setLang, t } = useLanguage();
+
+    // Recovery code screen state
+    const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+    const [recoveryUsername, setRecoveryUsername] = useState('');
+    // Recover account flow
+    const [showRecover, setShowRecover] = useState(false);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -67,17 +75,54 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             if (mode === 'login') {
                 await login(username.trim(), password);
                 toast.success(t('auth.login_success'));
+                onAuthenticated();
             } else {
-                await register(username.trim(), password);
+                const res = await register(username.trim(), password);
                 toast.success(t('auth.register_success'));
+                if (res.recovery_code) {
+                    setRecoveryCode(res.recovery_code);
+                    setRecoveryUsername(username.trim());
+                } else {
+                    onAuthenticated();
+                }
             }
-            onAuthenticated();
         } catch (err: any) {
             toast.error(err.message || 'Error');
         } finally {
             setLoading(false);
         }
     };
+
+    // Show recovery code screen after registration
+    if (recoveryCode) {
+        return (
+            <RecoveryCodeScreen
+                recoveryCode={recoveryCode}
+                username={recoveryUsername}
+                onContinue={() => {
+                    setRecoveryCode(null);
+                    onAuthenticated();
+                }}
+            />
+        );
+    }
+
+    // Show account recovery screen
+    if (showRecover) {
+        return (
+            <RecoverAccountScreen
+                onRecovered={(newCode, user) => {
+                    if (newCode) {
+                        setRecoveryCode(newCode);
+                        setRecoveryUsername(user);
+                    } else {
+                        onAuthenticated();
+                    }
+                }}
+                onBack={() => setShowRecover(false)}
+            />
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-beige-100 dark:bg-gray-950 relative">
@@ -221,6 +266,16 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                             {t('auth.master_warning')}
                             <br />{t('auth.master_warning2')}
                         </p>
+                    )}
+
+                    {mode === 'login' && (
+                        <button
+                            type="button"
+                            onClick={() => setShowRecover(true)}
+                            className="text-xs text-sekure-600 dark:text-sekure-400 hover:underline mt-4 inline-block"
+                        >
+                            {t('recovery.forgot_password')}
+                        </button>
                     )}
                 </div>
             </div>

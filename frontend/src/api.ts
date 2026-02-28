@@ -60,6 +60,15 @@ export const register = async (username: string, master_password: string) => {
     return res;
 };
 
+export const recoverAccount = async (username: string, recovery_code: string, new_master_password: string) => {
+    const res = await request<AuthResponse & { message: string }>('/auth/recover', {
+        method: 'POST',
+        body: JSON.stringify({ username, recovery_code, new_master_password }),
+    });
+    setToken(res.token);
+    return res;
+};
+
 export const login = async (username: string, master_password: string) => {
     const res = await request<AuthResponse>('/auth/login', {
         method: 'POST',

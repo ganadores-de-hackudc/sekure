@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from database import engine, get_db, Base
 from models import User, UserSession, Password, Tag, password_tags, Group, GroupMember, GroupPassword, GroupInvitation
 from schemas import (
-    UserRegister, UserLogin,
+    UserRegister, UserLogin, RecoverRequest,
     TagCreate, TagOut,
     GenerateRequest, GenerateResponse,
     CheckRequest, CheckResponse,
@@ -115,10 +115,17 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
     password_hash = hash_master_password(data.master_password, salt)
     key = derive_key(data.master_password, salt)
 
+    # Generate recovery code (format: XXXX-XXXX-XXXX-XXXX-XXXX)
+    raw_recovery = secrets.token_hex(10).upper()  # 20 hex chars
+    recovery_code = "-".join([raw_recovery[i:i+4] for i in range(0, 20, 4)])
+    import hashlib as _hl
+    recovery_hash = _hl.sha256(recovery_code.encode()).hexdigest()
+
     user = User(
         username=data.username.strip(),
         password_hash=password_hash,
         salt=base64.b64encode(salt).decode("utf-8"),
+        recovery_code_hash=recovery_hash,
     )
     db.add(user)
     db.commit()
@@ -134,7 +141,11 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
     db.add(sess)
     db.commit()
 
-    return {"token": token, "user": {"id": user.id, "username": user.username, "is_kids_account": False}}
+    return {
+        "token": token,
+        "user": {"id": user.id, "username": user.username, "is_kids_account": False},
+        "recovery_code": recovery_code,
+    }
 
 
 @app.post("/api/auth/login")
@@ -159,6 +170,60 @@ def login_user(data: UserLogin, db: Session = Depends(get_db)):
     db.commit()
 
     return {"token": token, "user": {"id": user.id, "username": user.username, "is_kids_account": bool(user.is_kids_account)}}
+
+
+@app.post("/api/auth/recover")
+def recover_account(data: RecoverRequest, db: Session = Depends(get_db)):
+    """Reset master password using recovery code. Re-encrypts nothing (vault is lost)."""
+    if len(data.new_master_password) < 8:
+        raise HTTPException(400, "La nueva contraseña debe tener al menos 8 caracteres.")
+
+    user = db.query(User).filter(User.username == data.username.strip()).first()
+    if not user or not user.recovery_code_hash:
+        raise HTTPException(400, "Código de recuperación inválido.")
+
+    import hashlib as _hl
+    code_hash = _hl.sha256(data.recovery_code.strip().upper().encode()).hexdigest()
+    if code_hash != user.recovery_code_hash:
+        raise HTTPException(400, "Código de recuperación inválido.")
+
+    # Reset password and salt — old vault entries become unrecoverable
+    new_salt = generate_salt()
+    new_hash = hash_master_password(data.new_master_password, new_salt)
+    new_key = derive_key(data.new_master_password, new_salt)
+
+    user.password_hash = new_hash
+    user.salt = base64.b64encode(new_salt).decode("utf-8")
+
+    # Generate new recovery code
+    raw_recovery = secrets.token_hex(10).upper()
+    new_recovery_code = "-".join([raw_recovery[i:i+4] for i in range(0, 20, 4)])
+    user.recovery_code_hash = _hl.sha256(new_recovery_code.encode()).hexdigest()
+
+    # Delete old vault (can't decrypt with new key)
+    db.query(Password).filter(Password.user_id == user.id).delete()
+    # Clear any existing sessions
+    db.query(UserSession).filter(UserSession.user_id == user.id).delete()
+
+    db.commit()
+
+    # Create new session
+    token = secrets.token_urlsafe(32)
+    sess = UserSession(
+        token=token,
+        user_id=user.id,
+        username=user.username,
+        encryption_key=base64.b64encode(new_key).decode("utf-8"),
+    )
+    db.add(sess)
+    db.commit()
+
+    return {
+        "token": token,
+        "user": {"id": user.id, "username": user.username, "is_kids_account": bool(user.is_kids_account)},
+        "recovery_code": new_recovery_code,
+        "message": "Contraseña restablecida. Tu bóveda anterior ha sido eliminada."
+    }
 
 
 @app.post("/api/auth/logout")

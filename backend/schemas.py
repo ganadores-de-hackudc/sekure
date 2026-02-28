@@ -14,6 +14,12 @@ class UserLogin(BaseModel):
     master_password: str
 
 
+class RecoverRequest(BaseModel):
+    username: str
+    recovery_code: str
+    new_master_password: str
+
+
 # --- Tags ---
 class TagCreate(BaseModel):
     name: str

@@ -66,6 +66,7 @@ export interface AuthStatus {
 export interface AuthResponse {
     token: string;
     user: { id: number; username: string; is_kids_account?: boolean };
+    recovery_code?: string;
 }
 
 // --- Groups ---
