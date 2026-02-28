@@ -9,7 +9,7 @@
 
 const STORAGE_KEY = 'sekure_biometric_cred';
 const LAST_VERIFIED_KEY = 'sekure_bio_last_verified';
-const GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minutes
+const GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
 
 /** Check if this device supports a platform authenticator (fingerprint, face, PIN). */
 export async function isBiometricAvailable(): Promise<boolean> {
@@ -62,9 +62,6 @@ export async function registerBiometric(username: string): Promise<void> {
     // Store the credential ID so we can use it for verification later
     const rawId = Array.from(new Uint8Array(credential.rawId));
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ credentialId: rawId }));
-
-    // Mark as just verified
-    sessionStorage.setItem(LAST_VERIFIED_KEY, Date.now().toString());
 }
 
 /** Remove the stored biometric credential. */

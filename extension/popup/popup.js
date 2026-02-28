@@ -52,7 +52,7 @@ async function copyToClipboard(text) {
 let allEntries = [];
 let currentTabUrl = '';
 let _bioLastVerified = 0;
-const BIO_GRACE_MS = 2 * 60 * 1000; // 2 minutes
+const BIO_GRACE_MS = 30 * 1000; // 30 seconds
 
 // ─── Biometric helpers ───
 async function isBioAvailable() {
@@ -94,7 +94,6 @@ async function registerBio() {
     if (!credential) throw new Error('Cancelado');
     const rawId = Array.from(new Uint8Array(credential.rawId));
     localStorage.setItem('sekure_bio_ext', JSON.stringify({ credentialId: rawId }));
-    _bioLastVerified = Date.now();
 }
 
 function disableBio() {
