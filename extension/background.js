@@ -3,6 +3,8 @@
  * Handles API communication and messaging between popup/content scripts.
  */
 
+importScripts('crypto.js');
+
 const API_BASE = 'https://sekure-woad.vercel.app/api';
 
 // ─── API helper ───
@@ -70,13 +72,20 @@ async function handleSavePassword(data) {
     const { token } = await chrome.storage.local.get('token');
     if (!token) throw new Error('No autenticado');
 
+    const { encryptionKey } = await chrome.storage.session.get('encryptionKey');
+    if (!encryptionKey) throw new Error('Clave no disponible. Inicia sesión de nuevo.');
+
+    const key = await SEKURE_CRYPTO.importKey(encryptionKey);
+    const { encrypted_password, iv } = await SEKURE_CRYPTO.encryptPassword(data.password, key);
+
     const entry = await apiRequest('/vault', {
         method: 'POST',
         body: JSON.stringify({
             title: data.title,
             username: data.username || '',
             url: data.url || '',
-            password: data.password,
+            encrypted_password,
+            iv,
             notes: '',
         }),
     });
@@ -85,7 +94,12 @@ async function handleSavePassword(data) {
 
 async function handleGetDecrypted(entryId) {
     const entry = await apiRequest(`/vault/${entryId}`);
-    return { password: entry.password, username: entry.username };
+    const { encryptionKey } = await chrome.storage.session.get('encryptionKey');
+    if (!encryptionKey) throw new Error('Clave no disponible. Inicia sesión de nuevo.');
+
+    const key = await SEKURE_CRYPTO.importKey(encryptionKey);
+    const password = await SEKURE_CRYPTO.decryptPassword(entry.encrypted_password, entry.iv, key);
+    return { password, username: entry.username };
 }
 
 function extractDomain(url) {

@@ -77,7 +77,8 @@ class VaultEntryCreate(BaseModel):
     title: str
     username: Optional[str] = ""
     url: Optional[str] = ""
-    password: str
+    encrypted_password: str  # base64 ciphertext (encrypted client-side)
+    iv: str                  # base64 IV
     notes: Optional[str] = ""
     is_favorite: Optional[bool] = False
     tag_ids: Optional[list[int]] = []
@@ -87,7 +88,8 @@ class VaultEntryUpdate(BaseModel):
     title: Optional[str] = None
     username: Optional[str] = None
     url: Optional[str] = None
-    password: Optional[str] = None
+    encrypted_password: Optional[str] = None  # base64 ciphertext
+    iv: Optional[str] = None                  # base64 IV
     notes: Optional[str] = None
     is_favorite: Optional[bool] = None
     tag_ids: Optional[list[int]] = None
@@ -108,8 +110,9 @@ class VaultEntryOut(BaseModel):
         from_attributes = True
 
 
-class VaultEntryWithPassword(VaultEntryOut):
-    password: str
+class VaultEntryEncrypted(VaultEntryOut):
+    encrypted_password: str   # base64 ciphertext
+    iv: str                   # base64 IV
 
 
 # --- Groups ---
@@ -159,7 +162,8 @@ class GroupPasswordCreate(BaseModel):
     title: str
     username: Optional[str] = ""
     url: Optional[str] = ""
-    password: str
+    encrypted_password: str  # base64 ciphertext (encrypted client-side with group key)
+    iv: str                  # base64 IV
     notes: Optional[str] = ""
 
 
@@ -167,7 +171,8 @@ class GroupPasswordUpdate(BaseModel):
     title: Optional[str] = None
     username: Optional[str] = None
     url: Optional[str] = None
-    password: Optional[str] = None
+    encrypted_password: Optional[str] = None
+    iv: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -187,8 +192,9 @@ class GroupPasswordOut(BaseModel):
         from_attributes = True
 
 
-class GroupPasswordWithPassword(GroupPasswordOut):
-    password: str
+class GroupPasswordEncrypted(GroupPasswordOut):
+    encrypted_password: str
+    iv: str
 
 
 # --- Sekure Kids ---
@@ -220,6 +226,8 @@ class ChangeUsername(BaseModel):
 class ChangePassword(BaseModel):
     current_password: str
     new_password: str
+    # Client sends re-encrypted vault entries
+    re_encrypted_entries: Optional[list[dict]] = None  # [{id, encrypted_password, iv}]
 
 
 class DeleteAccount(BaseModel):

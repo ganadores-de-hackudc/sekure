@@ -68,12 +68,19 @@ async function doLogin(user, pass) {
         body: JSON.stringify({ username: user, master_password: pass }),
     });
     await chrome.storage.local.set({ token: res.token, username: res.user.username });
+
+    // Derive encryption key and store in session storage
+    const key = await SEKURE_CRYPTO.deriveKey(pass, res.salt);
+    const exportedKey = await SEKURE_CRYPTO.exportKey(key);
+    await chrome.storage.session.set({ encryptionKey: exportedKey, salt: res.salt });
+
     return res;
 }
 
 async function doLogout() {
     try { await apiRequest('/auth/logout', { method: 'POST' }); } catch { }
     await chrome.storage.local.remove(['token', 'username']);
+    await chrome.storage.session.remove(['encryptionKey', 'salt']);
 }
 
 // ─── Data ───
@@ -83,7 +90,10 @@ async function fetchVault() {
 
 async function fetchDecryptedPassword(id) {
     const entry = await apiRequest(`/vault/${id}`);
-    return entry.password;
+    const { encryptionKey } = await chrome.storage.session.get('encryptionKey');
+    if (!encryptionKey) throw new Error('Clave no disponible. Inicia sesión de nuevo.');
+    const key = await SEKURE_CRYPTO.importKey(encryptionKey);
+    return SEKURE_CRYPTO.decryptPassword(entry.encrypted_password, entry.iv, key);
 }
 
 // ─── URL matching ───

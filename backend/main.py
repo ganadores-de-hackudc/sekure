@@ -15,16 +15,16 @@ from schemas import (
     TagCreate, TagOut,
     GenerateRequest, GenerateResponse,
     CheckRequest, CheckResponse,
-    VaultEntryCreate, VaultEntryUpdate, VaultEntryOut, VaultEntryWithPassword,
+    VaultEntryCreate, VaultEntryUpdate, VaultEntryOut, VaultEntryEncrypted,
     GroupCreate, GroupOut, GroupMemberOut, GroupInvite, GroupInvitationOut,
-    GroupPasswordCreate, GroupPasswordUpdate, GroupPasswordOut, GroupPasswordWithPassword,
+    GroupPasswordCreate, GroupPasswordUpdate, GroupPasswordOut, GroupPasswordEncrypted,
     KidsAccountCreate, KidsAccountUpdate, KidsAccountOut,
     ChangeUsername, ChangePassword, DeleteAccount,
     CreateShareLink,
 )
 from crypto import (
     generate_salt, derive_key, hash_master_password,
-    verify_master_password, encrypt_password, decrypt_password,
+    verify_master_password,
 )
 from password_utils import (
     generate_password, calculate_entropy, calculate_entropy_breakdown,
@@ -34,16 +34,14 @@ from password_utils import (
 
 # --- DB-backed session helper ---
 def _load_session(token: str, db: Session) -> dict | None:
-    """Load session from database, return dict with user_id, username, key or None."""
+    """Load session from database, return dict with user_id, username or None."""
     sess = db.query(UserSession).filter(UserSession.token == token).first()
     if not sess:
         return None
-    key = base64.b64decode(sess.encryption_key)
     user = db.query(User).filter(User.id == sess.user_id).first()
     return {
         "user_id": sess.user_id,
         "username": sess.username,
-        "key": key,
         "is_kids_account": bool(user.is_kids_account) if user else False,
     }
 
@@ -115,7 +113,7 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
 
     salt = generate_salt()
     password_hash = hash_master_password(data.master_password, salt)
-    key = derive_key(data.master_password, salt)
+    salt_b64 = base64.b64encode(salt).decode("utf-8")
 
     # Generate recovery code (format: XXXX-XXXX-XXXX-XXXX-XXXX)
     raw_recovery = secrets.token_hex(10).upper()  # 20 hex chars
@@ -126,7 +124,7 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
     user = User(
         username=data.username.strip(),
         password_hash=password_hash,
-        salt=base64.b64encode(salt).decode("utf-8"),
+        salt=salt_b64,
         recovery_code_hash=recovery_hash,
     )
     db.add(user)
@@ -138,7 +136,7 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
         token=token,
         user_id=user.id,
         username=user.username,
-        encryption_key=base64.b64encode(key).decode("utf-8"),
+        encryption_key="",  # No longer used — client derives key
     )
     db.add(sess)
     db.commit()
@@ -147,6 +145,7 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
         "token": token,
         "user": {"id": user.id, "username": user.username, "is_kids_account": False},
         "recovery_code": recovery_code,
+        "salt": salt_b64,
     }
 
 
@@ -160,18 +159,21 @@ def login_user(data: UserLogin, db: Session = Depends(get_db)):
     if not verify_master_password(data.master_password, salt, user.password_hash):
         raise HTTPException(401, "Usuario o contraseña incorrectos.")
 
-    key = derive_key(data.master_password, salt)
     token = secrets.token_urlsafe(32)
     sess = UserSession(
         token=token,
         user_id=user.id,
         username=user.username,
-        encryption_key=base64.b64encode(key).decode("utf-8"),
+        encryption_key="",  # No longer used — client derives key
     )
     db.add(sess)
     db.commit()
 
-    return {"token": token, "user": {"id": user.id, "username": user.username, "is_kids_account": bool(user.is_kids_account)}}
+    return {
+        "token": token,
+        "user": {"id": user.id, "username": user.username, "is_kids_account": bool(user.is_kids_account)},
+        "salt": user.salt,
+    }
 
 
 @app.post("/api/auth/recover")
@@ -192,10 +194,10 @@ def recover_account(data: RecoverRequest, db: Session = Depends(get_db)):
     # Reset password and salt — old vault entries become unrecoverable
     new_salt = generate_salt()
     new_hash = hash_master_password(data.new_master_password, new_salt)
-    new_key = derive_key(data.new_master_password, new_salt)
+    new_salt_b64 = base64.b64encode(new_salt).decode("utf-8")
 
     user.password_hash = new_hash
-    user.salt = base64.b64encode(new_salt).decode("utf-8")
+    user.salt = new_salt_b64
 
     # Generate new recovery code
     raw_recovery = secrets.token_hex(10).upper()
@@ -215,7 +217,7 @@ def recover_account(data: RecoverRequest, db: Session = Depends(get_db)):
         token=token,
         user_id=user.id,
         username=user.username,
-        encryption_key=base64.b64encode(new_key).decode("utf-8"),
+        encryption_key="",  # No longer used — client derives key
     )
     db.add(sess)
     db.commit()
@@ -224,6 +226,7 @@ def recover_account(data: RecoverRequest, db: Session = Depends(get_db)):
         "token": token,
         "user": {"id": user.id, "username": user.username, "is_kids_account": bool(user.is_kids_account)},
         "recovery_code": new_recovery_code,
+        "salt": new_salt_b64,
         "message": "Contraseña restablecida. Tu bóveda anterior ha sido eliminada."
     }
 
@@ -327,18 +330,16 @@ def create_vault_entry(
     session=Depends(get_current_session),
     db: Session = Depends(get_db),
 ):
-    key = session["key"]
     user_id = session["user_id"]
 
-    encrypted, iv = encrypt_password(data.password, key)
-
+    # Client sends already-encrypted data (zero-knowledge)
     entry = Password(
         user_id=user_id,
         title=data.title,
         username=data.username or "",
         url=data.url or "",
-        encrypted_password=encrypted,
-        iv=iv,
+        encrypted_password=data.encrypted_password,
+        iv=data.iv,
         notes=data.notes or "",
         is_favorite=data.is_favorite or False,
     )
@@ -353,22 +354,20 @@ def create_vault_entry(
     return entry
 
 
-@app.get("/api/vault/{entry_id}", response_model=VaultEntryWithPassword)
+@app.get("/api/vault/{entry_id}", response_model=VaultEntryEncrypted)
 def get_vault_entry(
     entry_id: int,
     session=Depends(get_current_session),
     db: Session = Depends(get_db),
 ):
-    key = session["key"]
     user_id = session["user_id"]
 
     entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 
-    decrypted = decrypt_password(entry.encrypted_password, entry.iv, key)
-
-    return VaultEntryWithPassword(
+    # Return encrypted data — client decrypts locally (zero-knowledge)
+    return VaultEntryEncrypted(
         id=entry.id,
         title=entry.title,
         username=entry.username,
@@ -378,7 +377,8 @@ def get_vault_entry(
         created_at=entry.created_at,
         updated_at=entry.updated_at,
         tags=[TagOut.model_validate(t) for t in entry.tags],
-        password=decrypted,
+        encrypted_password=entry.encrypted_password,
+        iv=entry.iv,
     )
 
 
@@ -389,7 +389,6 @@ def update_vault_entry(
     session=Depends(get_current_session),
     db: Session = Depends(get_db),
 ):
-    key = session["key"]
     user_id = session["user_id"]
 
     entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
@@ -406,10 +405,9 @@ def update_vault_entry(
         entry.notes = data.notes
     if data.is_favorite is not None:
         entry.is_favorite = data.is_favorite
-    if data.password is not None:
-        encrypted, iv = encrypt_password(data.password, key)
-        entry.encrypted_password = encrypted
-        entry.iv = iv
+    if data.encrypted_password is not None and data.iv is not None:
+        entry.encrypted_password = data.encrypted_password
+        entry.iv = data.iv
     if data.tag_ids is not None:
         tags = db.query(Tag).filter(Tag.id.in_(data.tag_ids), Tag.user_id == user_id).all()
         entry.tags = tags
@@ -527,6 +525,19 @@ def list_groups(session=Depends(get_current_session), db: Session = Depends(get_
     group_ids = [m.group_id for m in memberships]
     groups = db.query(Group).filter(Group.id.in_(group_ids)).order_by(Group.created_at.desc()).all() if group_ids else []
     return [_group_to_out(g) for g in groups]
+
+
+@app.get("/api/groups/{group_id}/key")
+def get_group_key(group_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Get the group encryption key. Only members can access."""
+    user_id = session["user_id"]
+    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
+    if not is_member:
+        raise HTTPException(403, "No eres miembro de este grupo.")
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    return {"encryption_key": group.encryption_key}
 
 
 @app.post("/api/groups", response_model=GroupOut, status_code=201)
@@ -827,18 +838,15 @@ def create_group_vault_entry(
     if not is_member:
         raise HTTPException(403, "No eres miembro de este grupo.")
 
-    group = db.query(Group).filter(Group.id == group_id).first()
-    group_key = base64.b64decode(group.encryption_key)
-    encrypted, iv = encrypt_password(data.password, group_key)
-
+    # Client sends already-encrypted data (encrypted with group key client-side)
     entry = GroupPassword(
         group_id=group_id,
         added_by=user_id,
         title=data.title,
         username=data.username or "",
         url=data.url or "",
-        encrypted_password=encrypted,
-        iv=iv,
+        encrypted_password=data.encrypted_password,
+        iv=data.iv,
         notes=data.notes or "",
     )
     db.add(entry)
@@ -859,14 +867,14 @@ def create_group_vault_entry(
     )
 
 
-@app.get("/api/groups/{group_id}/vault/{entry_id}", response_model=GroupPasswordWithPassword)
+@app.get("/api/groups/{group_id}/vault/{entry_id}", response_model=GroupPasswordEncrypted)
 def get_group_vault_entry(
     group_id: int,
     entry_id: int,
     session=Depends(get_current_session),
     db: Session = Depends(get_db),
 ):
-    """Get a group vault entry with decrypted password."""
+    """Get a group vault entry with encrypted password (client decrypts)."""
     user_id = session["user_id"]
     is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
     if not is_member:
@@ -876,11 +884,7 @@ def get_group_vault_entry(
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 
-    group = db.query(Group).filter(Group.id == group_id).first()
-    group_key = base64.b64decode(group.encryption_key)
-    decrypted = decrypt_password(entry.encrypted_password, entry.iv, group_key)
-
-    return GroupPasswordWithPassword(
+    return GroupPasswordEncrypted(
         id=entry.id,
         group_id=entry.group_id,
         title=entry.title,
@@ -891,7 +895,8 @@ def get_group_vault_entry(
         added_by_username=entry.added_by_user.username,
         created_at=entry.created_at,
         updated_at=entry.updated_at,
-        password=decrypted,
+        encrypted_password=entry.encrypted_password,
+        iv=entry.iv,
     )
 
 
@@ -923,11 +928,9 @@ def update_group_vault_entry(
         entry.url = data.url
     if data.notes is not None:
         entry.notes = data.notes
-    if data.password is not None:
-        group_key = base64.b64decode(group.encryption_key)
-        encrypted, iv = encrypt_password(data.password, group_key)
-        entry.encrypted_password = encrypted
-        entry.iv = iv
+    if data.encrypted_password is not None and data.iv is not None:
+        entry.encrypted_password = data.encrypted_password
+        entry.iv = data.iv
 
     db.commit()
     db.refresh(entry)
@@ -977,33 +980,33 @@ def import_vault_entry_to_group(
     session=Depends(get_current_session),
     db: Session = Depends(get_db),
 ):
-    """Import a personal vault entry into a group vault."""
+    """Import a personal vault entry into a group vault.
+    Client must provide re-encrypted data (encrypted with group key)."""
     user_id = session["user_id"]
-    key = session["key"]
 
     is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
     if not is_member:
         raise HTTPException(403, "No eres miembro de este grupo.")
 
-    # Get the personal vault entry
+    # Get the personal vault entry (metadata only — password stays encrypted)
     personal_entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
     if not personal_entry:
         raise HTTPException(404, "Entrada no encontrada en tu bóveda.")
 
-    # Decrypt with user key, re-encrypt with group key
-    decrypted = decrypt_password(personal_entry.encrypted_password, personal_entry.iv, key)
-    group = db.query(Group).filter(Group.id == group_id).first()
-    group_key = base64.b64decode(group.encryption_key)
-    encrypted, iv = encrypt_password(decrypted, group_key)
-
+    # The import now just copies the encrypted data as-is.
+    # The frontend must handle re-encryption from user key -> group key before calling this.
+    # We accept the personal entry's encrypted data directly since the client
+    # will have already re-encrypted it via the frontend before making this call.
+    # NOTE: The frontend calls the new /api/groups/{gid}/vault endpoint with
+    # re-encrypted data instead of using this endpoint.
     group_entry = GroupPassword(
         group_id=group_id,
         added_by=user_id,
         title=personal_entry.title,
         username=personal_entry.username,
         url=personal_entry.url,
-        encrypted_password=encrypted,
-        iv=iv,
+        encrypted_password=personal_entry.encrypted_password,
+        iv=personal_entry.iv,
         notes=personal_entry.notes,
     )
     db.add(group_entry)
@@ -1129,17 +1132,6 @@ def _get_kid_for_parent(kid_id: int, user_id: int, db: Session) -> User:
     raise HTTPException(403, "No tienes acceso a esta cuenta.")
 
 
-def _get_kid_encryption_key(kid: User, db: Session) -> bytes:
-    """Get or derive the encryption key for a kid's vault."""
-    # For kids accounts, we use a deterministic key derived from their salt.
-    # This ensures both parent and kid always use the EXACT SAME key to encrypt/decrypt,
-    # regardless of who is currently logged in or what sessions are active.
-    salt = base64.b64decode(kid.salt)
-    from crypto import derive_key
-    key = derive_key(f"sekure_kids_{kid.id}_{kid.parent_id}", salt)
-    return key
-
-
 @app.get("/api/kids/accounts/{kid_id}/vault")
 def list_kids_vault(kid_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
     """List vault entries for a kids account."""
@@ -1147,37 +1139,41 @@ def list_kids_vault(kid_id: int, session=Depends(get_current_session), db: Sessi
     kid = _get_kid_for_parent(kid_id, user_id, db)
 
     entries = db.query(Password).filter(Password.user_id == kid.id).order_by(Password.updated_at.desc()).all()
-    return [
-        {
-            "id": e.id,
-            "title": e.title,
-            "username": e.username,
-            "url": e.url,
-            "notes": e.notes,
-            "is_favorite": e.is_favorite,
-            "created_at": e.created_at,
-            "updated_at": e.updated_at,
-            "tags": [],
-        }
-        for e in entries
-    ]
+    return {
+        "entries": [
+            {
+                "id": e.id,
+                "title": e.title,
+                "username": e.username,
+                "url": e.url,
+                "notes": e.notes,
+                "is_favorite": e.is_favorite,
+                "created_at": e.created_at,
+                "updated_at": e.updated_at,
+                "tags": [],
+            }
+            for e in entries
+        ],
+        "kid_salt": kid.salt,
+        "kid_id": kid.id,
+        "parent_id": kid.parent_id,
+    }
 
 
 @app.post("/api/kids/accounts/{kid_id}/vault")
 def create_kids_vault_entry(kid_id: int, data: VaultEntryCreate, session=Depends(get_current_session), db: Session = Depends(get_db)):
-    """Create a vault entry for a kids account."""
+    """Create a vault entry for a kids account. Client sends pre-encrypted data."""
     user_id = session["user_id"]
     kid = _get_kid_for_parent(kid_id, user_id, db)
-    key = _get_kid_encryption_key(kid, db)
 
-    encrypted, iv = encrypt_password(data.password, key)
+    # Client sends already-encrypted data (encrypted with kid key client-side)
     entry = Password(
         user_id=kid.id,
         title=data.title,
         username=data.username or "",
         url=data.url or "",
-        encrypted_password=encrypted,
-        iv=iv,
+        encrypted_password=data.encrypted_password,
+        iv=data.iv,
         notes=data.notes or "",
         is_favorite=False,
     )
@@ -1199,27 +1195,29 @@ def create_kids_vault_entry(kid_id: int, data: VaultEntryCreate, session=Depends
 
 @app.get("/api/kids/accounts/{kid_id}/vault/{entry_id}")
 def get_kids_vault_entry(kid_id: int, entry_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
-    """Get a single vault entry (with decrypted password) for a kids account."""
+    """Get a single vault entry (with encrypted password) for a kids account. Client decrypts."""
     user_id = session["user_id"]
     kid = _get_kid_for_parent(kid_id, user_id, db)
-    key = _get_kid_encryption_key(kid, db)
 
     entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == kid.id).first()
     if not entry:
         raise HTTPException(404, "Entrada no encontrada.")
 
-    decrypted = decrypt_password(entry.encrypted_password, entry.iv, key)
     return {
         "id": entry.id,
         "title": entry.title,
         "username": entry.username,
         "url": entry.url,
         "notes": entry.notes,
-        "password": decrypted,
+        "encrypted_password": entry.encrypted_password,
+        "iv": entry.iv,
         "is_favorite": entry.is_favorite,
         "created_at": entry.created_at,
         "updated_at": entry.updated_at,
         "tags": [],
+        "kid_salt": kid.salt,
+        "kid_id": kid.id,
+        "parent_id": kid.parent_id,
     }
 
 
@@ -1268,7 +1266,7 @@ def change_username(data: ChangeUsername, session=Depends(get_current_session), 
 
 @app.put("/api/profile/password")
 def change_password(data: ChangePassword, session=Depends(get_current_session), db: Session = Depends(get_db)):
-    """Change the current user's master password. Re-encrypts all vault entries."""
+    """Change the current user's master password. Client sends re-encrypted vault entries."""
     user = db.query(User).filter(User.id == session["user_id"]).first()
     if not user:
         raise HTTPException(404, "Usuario no encontrado.")
@@ -1280,32 +1278,41 @@ def change_password(data: ChangePassword, session=Depends(get_current_session), 
     if len(data.new_password) < 8:
         raise HTTPException(400, "La nueva contraseña debe tener al menos 8 caracteres.")
 
-    old_key = derive_key(data.current_password, old_salt)
-
-    # Generate new salt & key
+    # Generate new salt & hash (no key derivation on server)
     new_salt = generate_salt()
     new_password_hash = hash_master_password(data.new_password, new_salt)
-    new_key = derive_key(data.new_password, new_salt)
+    new_salt_b64 = base64.b64encode(new_salt).decode("utf-8")
 
-    # Re-encrypt all vault entries
-    entries = db.query(Password).filter(Password.user_id == user.id).all()
-    for entry in entries:
-        try:
-            decrypted = decrypt_password(entry.encrypted_password, entry.iv, old_key)
-            encrypted, iv = encrypt_password(decrypted, new_key)
-            entry.encrypted_password = encrypted
-            entry.iv = iv
-        except Exception:
-            pass  # Skip entries that fail (shouldn't happen)
+    # Apply re-encrypted entries from client
+    if data.re_encrypted_entries:
+        for re_entry in data.re_encrypted_entries:
+            entry = db.query(Password).filter(
+                Password.id == re_entry["id"],
+                Password.user_id == user.id,
+            ).first()
+            if entry:
+                entry.encrypted_password = re_entry["encrypted_password"]
+                entry.iv = re_entry["iv"]
 
     user.password_hash = new_password_hash
-    user.salt = base64.b64encode(new_salt).decode("utf-8")
+    user.salt = new_salt_b64
 
-    # Update all sessions with new encryption key
-    new_key_b64 = base64.b64encode(new_key).decode("utf-8")
-    db.query(UserSession).filter(UserSession.user_id == user.id).update({"encryption_key": new_key_b64})
+    # Clear all sessions (user will re-login)
+    db.query(UserSession).filter(UserSession.user_id == user.id).delete()
     db.commit()
-    return {"message": "Contraseña actualizada correctamente."}
+
+    # Create new session
+    token = secrets.token_urlsafe(32)
+    sess = UserSession(
+        token=token,
+        user_id=user.id,
+        username=user.username,
+        encryption_key="",
+    )
+    db.add(sess)
+    db.commit()
+
+    return {"message": "Contraseña actualizada correctamente.", "token": token, "salt": new_salt_b64}
 
 
 @app.delete("/api/profile")

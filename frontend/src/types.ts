@@ -55,6 +55,12 @@ export interface VaultEntry {
     tags: Tag[];
 }
 
+export interface VaultEntryEncrypted extends VaultEntry {
+    encrypted_password: string;
+    iv: string;
+}
+
+// Convenience alias — password decrypted client-side
 export interface VaultEntryWithPassword extends VaultEntry {
     password: string;
 }
@@ -68,6 +74,7 @@ export interface AuthResponse {
     token: string;
     user: { id: number; username: string; is_kids_account?: boolean };
     recovery_code?: string;
+    salt: string;
 }
 
 // --- Groups ---
@@ -110,6 +117,12 @@ export interface GroupPassword {
     updated_at: string;
 }
 
+export interface GroupPasswordEncrypted extends GroupPassword {
+    encrypted_password: string;
+    iv: string;
+}
+
+// Convenience alias
 export interface GroupPasswordWithPassword extends GroupPassword {
     password: string;
 }
