@@ -1,0 +1,40 @@
+/* Sekure Extension — Content Script Styles */
+
+/* Animations injected into the page */
+@keyframes sekureSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes sekureFadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+/* Dropdown scrollbar */
+#sekure-autofill-dropdown::-webkit-scrollbar {
+    width: 4px;
+}
+
+#sekure-autofill-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#sekure-autofill-dropdown::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 2px;
+}
