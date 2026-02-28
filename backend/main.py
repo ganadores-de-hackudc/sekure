@@ -1289,7 +1289,7 @@ def create_share_link(
     db: Session = Depends(get_db),
 ):
     """Create a password share link. Frontend encrypts the data; we just store it."""
-    from datetime import timedelta
+    from datetime import timedelta, datetime, timezone
 
     durations = {
         "1h": timedelta(hours=1),
@@ -1323,6 +1323,7 @@ def get_share_link(
     db: Session = Depends(get_db),
 ):
     """Retrieve a shared password. Validates expiry and access."""
+    from datetime import datetime, timezone
     link = db.query(SharedLink).filter(SharedLink.id == share_id).first()
     if not link:
         raise HTTPException(404, "Enlace no encontrado.")
