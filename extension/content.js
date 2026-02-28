@@ -13,13 +13,21 @@
     const DROPDOWN_ID = 'sekure-autofill-dropdown';
     const BANNER_ID = 'sekure-save-banner';
     const PENDING_KEY = 'sekure_pending_save';
+    const DISMISSED_KEY = 'sekure_dismissed_saves';
     let currentDropdown = null;
     let currentPasswordField = null;
     let matchingEntries = [];
+    let allVaultEntries = []; // full vault for cross-domain duplicate check
     let isAuthenticated = false;
 
     // Proactive credential tracking — stores the latest values as user types
     let trackedCredentials = { username: '', password: '' };
+
+    // Sekure's own domains — never offer to save the master password
+    const SEKURE_DOMAINS = ['sekure-woad.vercel.app', 'localhost'];
+    function isSekureDomain(domain) {
+        return SEKURE_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
+    }
 
     // ─── Utility ───
     function extractDomain(url) {
@@ -36,14 +44,18 @@
             if (res && !res.error) {
                 isAuthenticated = res.authenticated;
                 matchingEntries = res.entries || [];
+                allVaultEntries = res.allEntries || res.entries || [];
             }
         } catch { /* extension context invalidated */ }
 
         if (isAuthenticated) {
             observePasswordFields();
-            observeFormSubmissions();
-            // Check if we have pending credentials from a previous page navigation
-            checkPendingCredentials();
+            // Don't offer to save passwords on Sekure's own login page
+            if (!isSekureDomain(currentDomain)) {
+                observeFormSubmissions();
+                // Check if we have pending credentials from a previous page navigation
+                checkPendingCredentials();
+            }
         }
     }
 
@@ -318,9 +330,22 @@
 
         if (!password) return;
 
-        // Check if already saved
-        const alreadySaved = matchingEntries.some(e => e.username === username);
+        // Never save on Sekure's own pages
+        if (isSekureDomain(currentDomain)) return;
+
+        // Check if already saved (match by username on same domain)
+        const alreadySaved = matchingEntries.some(e =>
+            e.username === username || (!e.username && !username)
+        );
         if (alreadySaved) return;
+
+        // Check if this exact credential was already dismissed this session
+        const dismissKey = `${currentDomain}|${username}`;
+        try {
+            const dismissed = await chrome.storage.local.get(DISMISSED_KEY);
+            const list = dismissed[DISMISSED_KEY] || [];
+            if (list.includes(dismissKey)) return;
+        } catch { /* ignore */ }
 
         // Persist to chrome.storage so it survives page navigation
         const pending = {
@@ -417,9 +442,24 @@
             // Clear the pending data
             chrome.storage.local.remove(PENDING_KEY);
 
-            // Check if already saved
-            const alreadySaved = matchingEntries.some(e => e.username === pending.username);
+            // Never save on Sekure's own pages
+            if (isSekureDomain(pendingDomain)) return;
+
+            // Check if already saved — compare against current domain entries
+            // and also re-fetch from the full vault to avoid stale cache
+            const alreadySaved = matchingEntries.some(e =>
+                e.username === pending.username || (!e.username && !pending.username)
+            );
             if (alreadySaved) return;
+
+            // Also check full vault entries (covers cross-domain match)
+            const alreadyInVault = allVaultEntries.some(e => {
+                if (!e.url) return false;
+                const eDomain = extractDomain(e.url.startsWith('http') ? e.url : `https://${e.url}`);
+                return (eDomain === pendingDomain || eDomain.endsWith('.' + pendingDomain) || pendingDomain.endsWith('.' + eDomain)) &&
+                    (e.username === pending.username || (!e.username && !pending.username));
+            });
+            if (alreadyInVault) return;
 
             // Show the save banner with a small delay for the page to settle
             setTimeout(() => {
@@ -431,8 +471,13 @@
     function maybeOfferSave(username, password) {
         if (!isAuthenticated || !password) return;
 
-        // Check if already saved for this exact username
-        const alreadySaved = matchingEntries.some(e => e.username === username);
+        // Never on Sekure's own pages
+        if (isSekureDomain(currentDomain)) return;
+
+        // Check if already saved for this exact username on this domain
+        const alreadySaved = matchingEntries.some(e =>
+            e.username === username || (!e.username && !username)
+        );
         if (alreadySaved) return;
 
         // Don't show if a banner is already visible
@@ -511,16 +556,31 @@
             </div>
         `;
 
+        const dismissKey = `${originalDomain || currentDomain}|${username}`;
+
         document.body.appendChild(banner);
+
+        // Helper to mark this credential as dismissed so it won't re-appear
+        function markDismissed() {
+            chrome.storage.local.get(DISMISSED_KEY).then(result => {
+                const list = result[DISMISSED_KEY] || [];
+                if (!list.includes(dismissKey)) {
+                    list.push(dismissKey);
+                    chrome.storage.local.set({ [DISMISSED_KEY]: list });
+                }
+            }).catch(() => { });
+        }
 
         // Close button
         banner.querySelector('#sekure-banner-close').addEventListener('click', () => {
+            markDismissed();
             banner.style.animation = 'sekureFadeOut 0.2s ease';
             setTimeout(() => banner.remove(), 200);
         });
 
         // Dismiss
         banner.querySelector('#sekure-banner-dismiss').addEventListener('click', () => {
+            markDismissed();
             banner.style.animation = 'sekureFadeOut 0.2s ease';
             setTimeout(() => banner.remove(), 200);
         });

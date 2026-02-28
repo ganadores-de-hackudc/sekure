@@ -49,7 +49,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 async function handleGetEntries(domain) {
     const { token } = await chrome.storage.local.get('token');
-    if (!token) return { entries: [], authenticated: false };
+    if (!token) return { entries: [], allEntries: [], authenticated: false };
 
     try {
         const entries = await apiRequest('/vault');
@@ -60,9 +60,9 @@ async function handleGetEntries(domain) {
                 return entryDomain === domain || entryDomain.endsWith(`.${domain}`) || domain.endsWith(`.${entryDomain}`);
             })
             : [];
-        return { entries: matching, authenticated: true };
+        return { entries: matching, allEntries: entries, authenticated: true };
     } catch {
-        return { entries: [], authenticated: false };
+        return { entries: [], allEntries: [], authenticated: false };
     }
 }
 
