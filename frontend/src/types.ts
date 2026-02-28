@@ -8,6 +8,7 @@ export interface GenerateRequest {
     num_words: number;
     separator: string;
     custom_words: string[];
+    augment_words: boolean;
 }
 
 export interface GenerateResponse {

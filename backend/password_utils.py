@@ -79,10 +79,11 @@ def _augment_word(word: str) -> str:
         return word + extra
 
 
-def generate_passphrase(num_words: int = 5, separator: str = "-", custom_words: list[str] | None = None) -> str:
+def generate_passphrase(num_words: int = 5, separator: str = "-", custom_words: list[str] | None = None, augment_words: bool = True) -> str:
     """Generate a passphrase using ONLY the user's custom words.
-    Each word is randomly augmented with numbers and/or special characters
-    injected before, in the middle, or after the word."""
+    If augment_words is True, each word is randomly augmented with numbers
+    and/or special characters injected before, in the middle, or after.
+    If False, words are just shuffled without modification."""
     cw = [w.strip() for w in (custom_words or []) if w.strip()]
     if not cw:
         return "Add-Words-To-Generate"
@@ -93,8 +94,9 @@ def generate_passphrase(num_words: int = 5, separator: str = "-", custom_words: 
         j = secrets.randbelow(i + 1)
         words[i], words[j] = words[j], words[i]
 
-    # Augment each word with random numbers/symbols
-    words = [_augment_word(w) for w in words]
+    # Optionally augment each word with random numbers/symbols
+    if augment_words:
+        words = [_augment_word(w) for w in words]
 
     return separator.join(words)
 
@@ -114,10 +116,11 @@ def generate_password(
     num_words: int = 5,
     separator: str = "-",
     custom_words: list[str] | None = None,
+    augment_words: bool = True,
 ) -> str:
     """Generate a password using the specified method."""
     if method == "passphrase":
-        return generate_passphrase(num_words, separator, custom_words)
+        return generate_passphrase(num_words, separator, custom_words, augment_words)
     elif method == "pin":
         return generate_pin(length)
     else:

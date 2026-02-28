@@ -28,6 +28,7 @@ export default function Generator() {
         num_words: 5,
         separator: '-',
         custom_words: [],
+        augment_words: true,
     });
     const [result, setResult] = useState<GenerateResponse | null>(null);
     const [loading, setLoading] = useState(false);
@@ -166,6 +167,17 @@ export default function Generator() {
                                         >{sep === ' ' ? '⎵' : sep === '' ? '∅' : sep}</button>
                                     ))}
                                 </div>
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-sm text-gray-600 dark:text-gray-300">{t('gen.augment_words')}</label>
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative">
+                                        <input type="checkbox" checked={config.augment_words} onChange={(e) => setConfig({ ...config, augment_words: e.target.checked })} className="sr-only peer" />
+                                        <div className="w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full peer-checked:bg-sekure-600 transition-colors" />
+                                        <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full peer-checked:translate-x-4 transition-transform shadow-sm" />
+                                    </div>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">{t('gen.augment_words_desc')}</span>
+                                </label>
                             </div>
                             <div>
                                 <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">{t('gen.custom_words')}</label>

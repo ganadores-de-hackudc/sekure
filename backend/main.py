@@ -261,6 +261,7 @@ def gen_password(data: GenerateRequest):
         num_words=data.num_words,
         separator=data.separator,
         custom_words=data.custom_words,
+        augment_words=data.augment_words,
     )
     entropy = calculate_entropy(password)
     strength, _ = get_strength_label(entropy)

@@ -122,6 +122,8 @@ const translations: Record<Lang, Record<string, string>> = {
         'gen.custom_words': 'Palabras personalizadas',
         'gen.custom_word_placeholder': 'Escribe una palabra...',
         'gen.add_custom_word': 'Añadir palabra',
+        'gen.augment_words': 'Añadir símbolos y números',
+        'gen.augment_words_desc': 'Inyecta números y caracteres especiales aleatoriamente en las palabras',
         'gen.pin_length': 'Longitud del PIN',
 
         // Strength
@@ -461,6 +463,8 @@ const translations: Record<Lang, Record<string, string>> = {
         'gen.custom_words': 'Custom words',
         'gen.custom_word_placeholder': 'Type a word...',
         'gen.add_custom_word': 'Add word',
+        'gen.augment_words': 'Add symbols & numbers',
+        'gen.augment_words_desc': 'Randomly inject numbers and special characters into words',
         'gen.pin_length': 'PIN length',
 
         'strength.very_weak': 'Very weak',
@@ -793,6 +797,8 @@ const translations: Record<Lang, Record<string, string>> = {
         'gen.custom_words': 'Palabras personalizadas',
         'gen.custom_word_placeholder': 'Escribe unha palabra...',
         'gen.add_custom_word': 'Engadir palabra',
+        'gen.augment_words': 'Engadir símbolos e números',
+        'gen.augment_words_desc': 'Inxecta números e caracteres especiais aleatoriamente nas palabras',
         'gen.pin_length': 'Lonxitude do PIN',
 
         'strength.very_weak': 'Moi débil',

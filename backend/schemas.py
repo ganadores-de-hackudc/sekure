@@ -46,6 +46,7 @@ class GenerateRequest(BaseModel):
     num_words: int = 5  # for passphrase method
     separator: str = "-"  # for passphrase method
     custom_words: list[str] = []  # custom words to include in passphrase
+    augment_words: bool = True  # inject random numbers/symbols into words
 
 
 class GenerateResponse(BaseModel):
