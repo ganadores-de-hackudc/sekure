@@ -332,7 +332,7 @@ function createPasswordItem(entry, showCopyBtn = true) {
         }
     });
 
-    // Autofill in page
+    // Autofill in page (requires master password confirmation)
     div.querySelector('.fill-btn').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
@@ -349,6 +349,7 @@ function createPasswordItem(entry, showCopyBtn = true) {
                 setTimeout(() => window.close(), 600);
             }
         } catch (err) {
+            if (err && err.message === 'Cancelado') return;
             const msg = (err && err.message) ? err.message : 'Error al autocompletar';
             if (msg.includes('Sesión expirada') || msg.includes('Cierra sesión')) {
                 showLogin();
