@@ -52,6 +52,98 @@ async function copyToClipboard(text) {
 let allEntries = [];
 let currentTabUrl = '';
 
+// ─── Autofill Auth Modal ───
+const authModal = document.getElementById('authModal');
+const authModalPassword = document.getElementById('authModalPassword');
+const authModalError = document.getElementById('authModalError');
+const authModalConfirm = document.getElementById('authModalConfirm');
+const authModalCancel = document.getElementById('authModalCancel');
+const authModalToggle = document.getElementById('authModalToggle');
+
+let _autofillResolve = null;
+let _autofillReject = null;
+
+function requestMasterPassword() {
+    return new Promise((resolve, reject) => {
+        _autofillResolve = resolve;
+        _autofillReject = reject;
+        authModalPassword.value = '';
+        authModalError.style.display = 'none';
+        authModalConfirm.disabled = false;
+        authModalConfirm.textContent = 'Confirmar';
+        authModal.style.display = 'flex';
+        setTimeout(() => authModalPassword.focus(), 100);
+    });
+}
+
+async function verifyMasterPassword(password) {
+    const { username } = await chrome.storage.local.get('username');
+    if (!username) throw new Error('No hay sesión activa.');
+    // Verify by attempting login against the API
+    const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, master_password: password }),
+    });
+    if (!res.ok) {
+        throw new Error('Contraseña incorrecta');
+    }
+    const data = await res.json();
+    // Update token & key with the fresh ones
+    await chrome.storage.local.set({ token: data.token });
+    const key = await SEKURE_CRYPTO.deriveKey(password, data.salt);
+    const exportedKey = await SEKURE_CRYPTO.exportKey(key);
+    await chrome.storage.session.set({ encryptionKey: exportedKey, salt: data.salt });
+    return true;
+}
+
+authModalConfirm.addEventListener('click', async () => {
+    const pw = authModalPassword.value;
+    if (!pw) {
+        authModalError.textContent = 'Introduce tu contraseña maestra';
+        authModalError.style.display = 'block';
+        return;
+    }
+    authModalConfirm.disabled = true;
+    authModalConfirm.textContent = 'Verificando...';
+    authModalError.style.display = 'none';
+    try {
+        await verifyMasterPassword(pw);
+        authModal.style.display = 'none';
+        if (_autofillResolve) _autofillResolve(true);
+    } catch (err) {
+        authModalError.textContent = err.message || 'Contraseña incorrecta';
+        authModalError.style.display = 'block';
+        authModalConfirm.disabled = false;
+        authModalConfirm.textContent = 'Confirmar';
+        authModalPassword.value = '';
+        authModalPassword.focus();
+    }
+});
+
+authModalCancel.addEventListener('click', () => {
+    authModal.style.display = 'none';
+    if (_autofillReject) _autofillReject(new Error('Cancelado'));
+});
+
+authModalPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        authModalConfirm.click();
+    }
+    if (e.key === 'Escape') {
+        authModalCancel.click();
+    }
+});
+
+authModalToggle.addEventListener('click', () => {
+    const isPassword = authModalPassword.type === 'password';
+    authModalPassword.type = isPassword ? 'text' : 'password';
+    authModalToggle.innerHTML = isPassword
+        ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+        : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+});
+
 // ─── Toast ───
 function showToast(text, type = 'success') {
     const el = document.createElement('div');
@@ -231,10 +323,12 @@ function createPasswordItem(entry, showCopyBtn = true) {
         }
     });
 
-    // Autofill in page
+    // Autofill in page (requires master password confirmation)
     div.querySelector('.fill-btn').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
+            // Ask for master password before autofilling
+            await requestMasterPassword();
             const pw = await fetchDecryptedPassword(entry.id);
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab?.id) {
@@ -247,6 +341,7 @@ function createPasswordItem(entry, showCopyBtn = true) {
                 setTimeout(() => window.close(), 600);
             }
         } catch (err) {
+            if (err && err.message === 'Cancelado') return;
             const msg = (err && err.message) ? err.message : 'Error al autocompletar';
             if (msg.includes('Sesión expirada') || msg.includes('Cierra sesión')) {
                 showLogin();
