@@ -69,14 +69,14 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
     const currentLang = LANGUAGES.find(l => l.code === lang)!;
 
     return (
-        <div className="min-h-screen flex bg-beige-50 dark:bg-gray-950">
+        <div className="h-screen flex overflow-hidden bg-beige-50 dark:bg-gray-950">
             {/* Sidebar - Desktop */}
-            <aside className="hidden lg:flex flex-col w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6">
-                <div className="flex items-center gap-3 mb-10">
+            <aside className="hidden lg:flex flex-col w-72 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6 overflow-hidden">
+                <div className="flex-shrink-0 flex items-center gap-3 mb-10">
                     <img src="/sekure-longlogo.svg" alt="Sekure" className="h-10" />
                 </div>
 
-                <nav className="flex-1 space-y-2">
+                <nav className="flex-1 min-h-0 overflow-y-auto space-y-2">
                     {navItems.map(({ to, icon: Icon, label, badge }) => (
                         <NavLink
                             key={to}
@@ -99,7 +99,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                 </nav>
 
                 {/* Sekure KIDS */}
-                <div className="border-t border-gray-200 dark:border-gray-800 pt-3 mt-3">
+                <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 pt-3 mt-3">
                     <NavLink
                         to="/kids"
                         className={({ isActive }) =>
@@ -110,7 +110,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                     </NavLink>
                 </div>
 
-                <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
+                <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
                     <NavLink to="/profile" className={({ isActive }) => `flex items-center gap-2 px-4 py-2 mb-2 rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-sekure-50 dark:bg-sekure-900/10 text-sekure-600 dark:text-sekure-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                         <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{username}</span>
@@ -126,8 +126,8 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
             {sidebarOpen && (
                 <div className="lg:hidden fixed inset-0 z-50 flex">
                     <div className="fixed inset-0 bg-black/40 dark:bg-black/60" onClick={() => setSidebarOpen(false)} />
-                    <aside className="relative w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6 z-10 flex flex-col animate-fade-in shadow-xl">
-                        <div className="flex items-center justify-between mb-10">
+                    <aside className="relative w-72 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6 z-10 flex flex-col animate-fade-in shadow-xl overflow-hidden">
+                        <div className="flex-shrink-0 flex items-center justify-between mb-10">
                             <div className="flex items-center gap-3">
                                 <img src="/sekure-longlogo.svg" alt="Sekure" className="h-10" />
                             </div>
@@ -136,7 +136,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                             </button>
                         </div>
 
-                        <nav className="flex-1 space-y-2">
+                        <nav className="flex-1 min-h-0 overflow-y-auto space-y-2">
                             {navItems.map(({ to, icon: Icon, label, badge }) => (
                                 <NavLink
                                     key={to}
@@ -160,7 +160,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                         </nav>
 
                         {/* Sekure KIDS */}
-                        <div className="border-t border-gray-200 dark:border-gray-800 pt-3 mt-3">
+                        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 pt-3 mt-3">
                             <NavLink
                                 to="/kids"
                                 onClick={() => setSidebarOpen(false)}
@@ -172,7 +172,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                             </NavLink>
                         </div>
 
-                        <div className="border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
+                        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 pt-4 mt-3">
                             <NavLink to="/profile" onClick={() => setSidebarOpen(false)} className={({ isActive }) => `flex items-center gap-2 px-4 py-2 mb-2 rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-sekure-50 dark:bg-sekure-900/10 text-sekure-600 dark:text-sekure-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                                 <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                 <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{username}</span>
@@ -187,7 +187,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
             )}
 
             {/* Main content */}
-            <main className="flex-1 flex flex-col min-h-screen">
+            <main className="flex-1 flex flex-col min-h-0">
                 {/* Top bar with language selector + theme toggle */}
                 <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
                     <div className="flex items-center gap-3">
