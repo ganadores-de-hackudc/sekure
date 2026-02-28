@@ -594,10 +594,13 @@ def invite_to_group(group_id: int, data: GroupInvite, session=Depends(get_curren
     existing_invite = db.query(GroupInvitation).filter(
         GroupInvitation.group_id == group_id,
         GroupInvitation.invitee_id == invitee.id,
-        GroupInvitation.status == "pending",
     ).first()
     if existing_invite:
-        raise HTTPException(400, "Ya existe una invitación pendiente para este usuario.")
+        if existing_invite.status == "pending":
+            raise HTTPException(400, "Ya existe una invitación pendiente para este usuario.")
+        # Old accepted/ignored invitation exists -> delete it so we can re-invite
+        db.delete(existing_invite)
+        db.flush()
 
     invitation = GroupInvitation(
         group_id=group_id,
@@ -630,6 +633,76 @@ def kick_from_group(group_id: int, target_user_id: int, session=Depends(get_curr
     db.delete(member)
     db.commit()
     return {"message": "Usuario expulsado del grupo."}
+
+
+@app.post("/api/groups/{group_id}/leave")
+def leave_group(group_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Leave a group. The owner cannot leave (must delete the group instead)."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id == user_id:
+        raise HTTPException(400, "El creador no puede abandonar el grupo. Elimínalo si quieres salir.")
+
+    member = db.query(GroupMember).filter(
+        GroupMember.group_id == group_id, GroupMember.user_id == user_id
+    ).first()
+    if not member:
+        raise HTTPException(404, "No eres miembro de este grupo.")
+
+    db.delete(member)
+    db.commit()
+    return {"message": "Has abandonado el grupo."}
+
+
+@app.get("/api/groups/{group_id}/invitations")
+def list_group_invitations(group_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """List pending invitations for a group. Only the owner can see."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id != user_id:
+        raise HTTPException(403, "Solo el creador puede ver las invitaciones.")
+
+    invitations = db.query(GroupInvitation).filter(
+        GroupInvitation.group_id == group_id,
+        GroupInvitation.status == "pending",
+    ).all()
+    return [
+        {
+            "id": inv.id,
+            "invitee_id": inv.invitee_id,
+            "invitee_username": inv.invitee.username,
+            "status": inv.status,
+            "created_at": inv.created_at,
+        }
+        for inv in invitations
+    ]
+
+
+@app.delete("/api/groups/{group_id}/invitations/{invitation_id}")
+def cancel_invitation(group_id: int, invitation_id: int, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Cancel a pending invitation. Only the owner can cancel."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id != user_id:
+        raise HTTPException(403, "Solo el creador puede cancelar invitaciones.")
+
+    invitation = db.query(GroupInvitation).filter(
+        GroupInvitation.id == invitation_id,
+        GroupInvitation.group_id == group_id,
+        GroupInvitation.status == "pending",
+    ).first()
+    if not invitation:
+        raise HTTPException(404, "Invitación no encontrada.")
+
+    db.delete(invitation)
+    db.commit()
+    return {"message": "Invitación cancelada."}
 
 
 # --- Group Vault (passwords) ---
