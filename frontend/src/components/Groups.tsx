@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     listGroups, createGroup, deleteGroup, getGroup,
-    inviteToGroup, kickFromGroup,
+    inviteToGroup, kickFromGroup, leaveGroup,
     getPendingInvitations, acceptInvitation, ignoreInvitation,
     listGroupVault, createGroupVaultEntry, getGroupVaultEntry, deleteGroupVaultEntry,
+    listGroupInvitations, cancelInvitation,
 } from '../api';
 import type { Group, GroupInvitation, GroupPassword, GroupPasswordWithPassword } from '../types';
 import { useLanguage } from '../i18n';
@@ -11,7 +12,7 @@ import toast from 'react-hot-toast';
 import {
     Users, Plus, Bell, ArrowLeft, Trash2, UserPlus, UserMinus,
     Eye, EyeOff, Copy, Globe, User, ExternalLink, Crown, X,
-    Save, Lock,
+    Save, Lock, LogOut, XCircle,
 } from 'lucide-react';
 
 // ─── Add Password Modal ───
@@ -93,6 +94,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
     const [showInviteInput, setShowInviteInput] = useState(false);
     const [inviteUsername, setInviteUsername] = useState('');
     const [groupData, setGroupData] = useState<Group>(group);
+    const [pendingInvitations, setPendingInvitations] = useState<{ id: number; invitee_id: number; invitee_username: string; status: string; created_at: string }[]>([]);
 
     const isOwner = group.owner_id === currentUserId;
 
@@ -102,6 +104,13 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
             const [vault, g] = await Promise.all([listGroupVault(group.id), getGroup(group.id)]);
             setEntries(vault);
             setGroupData(g);
+            // Fetch pending invitations if owner
+            if (group.owner_id === currentUserId) {
+                try {
+                    const invs = await listGroupInvitations(group.id);
+                    setPendingInvitations(invs);
+                } catch { /* ignore */ }
+            }
         } catch (err: any) { toast.error(err.message); }
         finally { setLoading(false); }
     }, [group.id]);
@@ -147,6 +156,17 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
         catch (err: any) { toast.error(err.message); }
     };
 
+    const handleLeave = async () => {
+        if (!window.confirm(t('groups.confirm_leave'))) return;
+        try { await leaveGroup(group.id); toast.success(t('groups.left')); onBack(); }
+        catch (err: any) { toast.error(err.message); }
+    };
+
+    const handleCancelInvitation = async (invitationId: number) => {
+        try { await cancelInvitation(group.id, invitationId); toast.success(t('groups.invitation_cancelled')); await fetchData(); }
+        catch (err: any) { toast.error(err.message); }
+    };
+
     return (
         <div>
             {/* Header */}
@@ -163,9 +183,16 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                         </p>
                     </div>
                 </div>
-                <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
-                    <Plus className="w-5 h-5" />{t('groups.add_password')}
-                </button>
+                <div className="flex gap-2">
+                    {!isOwner && (
+                        <button onClick={handleLeave} className="btn-secondary flex items-center gap-2 text-red-500 hover:text-red-600 border-red-300 dark:border-red-800">
+                            <LogOut className="w-5 h-5" />{t('groups.leave')}
+                        </button>
+                    )}
+                    <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+                        <Plus className="w-5 h-5" />{t('groups.add_password')}
+                    </button>
+                </div>
             </div>
 
             {/* Members section */}
@@ -201,6 +228,25 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                         </div>
                     ))}
                 </div>
+
+                {/* Pending invitations (admin only) */}
+                {isOwner && pendingInvitations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">{t('groups.pending_invitations')}</h4>
+                        <div className="flex flex-wrap gap-2">
+                            {pendingInvitations.map(inv => (
+                                <div key={inv.id} className="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg px-3 py-2 text-sm">
+                                    <UserPlus className="w-4 h-4 text-yellow-500" />
+                                    <span className="text-gray-700 dark:text-gray-300">{inv.invitee_username}</span>
+                                    <span className="text-xs text-yellow-600 dark:text-yellow-400">{t('groups.pending')}</span>
+                                    <button onClick={() => handleCancelInvitation(inv.id)} className="text-red-400 hover:text-red-500 ml-1" title={t('groups.cancel_invitation')}>
+                                        <XCircle className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Passwords */}
