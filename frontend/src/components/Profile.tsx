@@ -234,14 +234,14 @@ export default function Profile({ username, onLogout, onUsernameChanged }: Profi
     // Main menu
     return (
         <div className="max-w-lg mx-auto">
-            <div className="flex items-center gap-4 mb-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-sekure-400 to-sekure-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-sekure-200 dark:shadow-sekure-900/30">
+            <div className="flex flex-col items-center gap-4 mb-10 text-center">
+                <div className="w-32 h-32 bg-gradient-to-br from-sekure-400 to-sekure-600 rounded-3xl flex items-center justify-center text-white text-5xl font-bold shadow-xl shadow-sekure-200 dark:shadow-sekure-900/30">
                     {username.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{username}</h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-1">
-                        <Shield className="w-3.5 h-3.5" /> {t('profile.title')}
+                <div className="mt-2">
+                    <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">{username}</h2>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm flex items-center justify-center gap-1.5">
+                        <Shield className="w-4 h-4" /> {t('profile.title')}
                     </p>
                 </div>
             </div>
