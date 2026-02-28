@@ -13,7 +13,7 @@ import type {
     GroupPasswordWithPassword,
 } from './types';
 
-const BASE = '/api';
+const BASE = 'https://sekure-woad.vercel.app/api';
 const TOKEN_KEY = 'sekure_token';
 
 let authToken: string | null = localStorage.getItem(TOKEN_KEY);
@@ -167,15 +167,6 @@ export const inviteToGroup = (groupId: number, username: string) =>
 
 export const kickFromGroup = (groupId: number, userId: number) =>
     request<{ message: string }>(`/groups/${groupId}/kick/${userId}`, { method: 'POST' });
-
-export const leaveGroup = (groupId: number) =>
-    request<{ message: string }>(`/groups/${groupId}/leave`, { method: 'POST' });
-
-export const listGroupInvitations = (groupId: number) =>
-    request<{ id: number; invitee_id: number; invitee_username: string; status: string; created_at: string }[]>(`/groups/${groupId}/invitations`);
-
-export const cancelInvitation = (groupId: number, invitationId: number) =>
-    request<{ message: string }>(`/groups/${groupId}/invitations/${invitationId}`, { method: 'DELETE' });
 
 export const getPendingInvitations = () =>
     request<GroupInvitation[]>('/groups/invitations/pending');
