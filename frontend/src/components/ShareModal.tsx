@@ -148,8 +148,8 @@ export default function ShareModal({ entryId, entryTitle, entryUrl, onClose }: S
                                             key={opt.value}
                                             onClick={() => setExpiry(opt.value)}
                                             className={`py-2 px-3 rounded-lg text-sm font-medium transition-all border ${expiry === opt.value
-                                                    ? 'bg-sekure-50 dark:bg-sekure-900/20 border-sekure-300 dark:border-sekure-600 text-sekure-700 dark:text-sekure-400'
-                                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
+                                                ? 'bg-sekure-50 dark:bg-sekure-900/20 border-sekure-300 dark:border-sekure-600 text-sekure-700 dark:text-sekure-400'
+                                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                                                 }`}
                                         >
                                             {opt.label}
@@ -168,8 +168,8 @@ export default function ShareModal({ entryId, entryTitle, entryUrl, onClose }: S
                                     <button
                                         onClick={() => setAccessMode('anyone')}
                                         className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium border transition-all ${accessMode === 'anyone'
-                                                ? 'bg-sekure-50 dark:bg-sekure-900/20 border-sekure-300 dark:border-sekure-600 text-sekure-700 dark:text-sekure-400'
-                                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                            ? 'bg-sekure-50 dark:bg-sekure-900/20 border-sekure-300 dark:border-sekure-600 text-sekure-700 dark:text-sekure-400'
+                                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
                                             }`}
                                     >
                                         <Globe className="w-4 h-4" />
@@ -178,8 +178,8 @@ export default function ShareModal({ entryId, entryTitle, entryUrl, onClose }: S
                                     <button
                                         onClick={() => setAccessMode('specific')}
                                         className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium border transition-all ${accessMode === 'specific'
-                                                ? 'bg-sekure-50 dark:bg-sekure-900/20 border-sekure-300 dark:border-sekure-600 text-sekure-700 dark:text-sekure-400'
-                                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                                            ? 'bg-sekure-50 dark:bg-sekure-900/20 border-sekure-300 dark:border-sekure-600 text-sekure-700 dark:text-sekure-400'
+                                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
                                             }`}
                                     >
                                         <Users className="w-4 h-4" />
