@@ -127,11 +127,11 @@ export default function Vault() {
         <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                        <Archive className="w-8 h-8 text-sekure-500" />
+                    <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-gray-800 dark:text-white">
+                        <Archive className="w-8 h-8 text-sekure-600 dark:text-sekure-500" />
                         Bóveda
                     </h2>
-                    <p className="text-gray-400 mt-1">
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">
                         {entries.length} contraseña{entries.length !== 1 ? 's' : ''} almacenada{entries.length !== 1 ? 's' : ''}
                     </p>
                 </div>
@@ -148,7 +148,7 @@ export default function Vault() {
             <div className="card mb-6 space-y-4">
                 <div className="flex gap-3">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                         <input
                             type="text"
                             value={search}
@@ -159,7 +159,7 @@ export default function Vault() {
                     </div>
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`btn-secondary flex items-center gap-2 ${showFilters ? 'border-sekure-500 text-sekure-400' : ''}`}
+                        className={`btn-secondary flex items-center gap-2 ${showFilters ? 'border-sekure-500 text-sekure-600 dark:text-sekure-400' : ''}`}
                     >
                         <Filter className="w-4 h-4" />
                         <span className="hidden sm:inline">Filtros</span>
@@ -167,13 +167,13 @@ export default function Vault() {
                 </div>
 
                 {showFilters && (
-                    <div className="animate-fade-in space-y-3 pt-2 border-t border-gray-800">
+                    <div className="animate-fade-in space-y-3 pt-2 border-t border-gray-200 dark:border-gray-800">
                         <div className="flex items-center gap-4 flex-wrap">
                             <button
                                 onClick={() => setFavoritesOnly(!favoritesOnly)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${favoritesOnly
-                                    ? 'bg-yellow-600/15 text-yellow-400 border border-yellow-600/30'
-                                    : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${favoritesOnly
+                                    ? 'bg-yellow-50 text-yellow-600 border border-yellow-300 dark:bg-yellow-600/15 dark:text-yellow-400 dark:border-yellow-600/30'
+                                    : 'bg-gray-50 text-gray-500 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
                                     }`}
                             >
                                 <Star className={`w-4 h-4 ${favoritesOnly ? 'fill-yellow-400' : ''}`} />
@@ -181,12 +181,12 @@ export default function Vault() {
                             </button>
 
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm text-gray-400">Etiquetas:</span>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">Etiquetas:</span>
                                 <button
                                     onClick={() => setFilterTag('')}
                                     className={`badge border transition-colors ${!filterTag
-                                        ? 'border-sekure-500 bg-sekure-600/10 text-sekure-400'
-                                        : 'border-gray-700 text-gray-400'
+                                        ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400'
+                                        : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'
                                         }`}
                                 >
                                     Todas
@@ -197,12 +197,12 @@ export default function Vault() {
                                         onClick={() => setFilterTag(filterTag === tag.name ? '' : tag.name)}
                                         className={`badge border transition-colors group ${filterTag === tag.name
                                             ? 'bg-opacity-20 border-opacity-50'
-                                            : 'border-gray-700 hover:border-gray-600'
+                                            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
                                             }`}
                                         style={{
                                             backgroundColor: filterTag === tag.name ? `${tag.color}20` : undefined,
                                             borderColor: filterTag === tag.name ? tag.color : undefined,
-                                            color: filterTag === tag.name ? tag.color : '#9ca3af',
+                                            color: filterTag === tag.name ? tag.color : undefined,
                                         }}
                                     >
                                         {tag.name}
@@ -219,7 +219,7 @@ export default function Vault() {
                                 ))}
                                 <button
                                     onClick={() => setShowTagCreator(!showTagCreator)}
-                                    className="badge border border-dashed border-gray-600 text-gray-500 hover:text-gray-300 hover:border-gray-400 transition-colors"
+                                    className="badge border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:border-gray-400 transition-colors"
                                 >
                                     <Plus className="w-3 h-3 mr-1" />
                                     Nueva
@@ -242,7 +242,7 @@ export default function Vault() {
                                         <button
                                             key={color}
                                             onClick={() => setNewTagColor(color)}
-                                            className={`w-6 h-6 rounded-full border-2 transition-transform ${newTagColor === color ? 'border-white scale-110' : 'border-transparent'
+                                            className={`w-6 h-6 rounded-full border-2 transition-transform ${newTagColor === color ? 'border-gray-800 dark:border-white scale-110' : 'border-transparent'
                                                 }`}
                                             style={{ backgroundColor: color }}
                                         />
@@ -264,9 +264,9 @@ export default function Vault() {
                 </div>
             ) : entries.length === 0 ? (
                 <div className="card text-center py-16">
-                    <Archive className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-500 text-lg">No hay contraseñas almacenadas</p>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <Archive className="w-16 h-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-500 text-lg">No hay contraseñas almacenadas</p>
+                    <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">
                         Genera una contraseña y guárdala, o añade una manualmente
                     </p>
                 </div>
@@ -279,18 +279,18 @@ export default function Vault() {
                         >
                             <div className="flex items-start gap-4">
                                 {/* Icon */}
-                                <div className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
                                     {entry.url ? (
-                                        <Globe className="w-6 h-6 text-gray-400" />
+                                        <Globe className="w-6 h-6 text-gray-400 dark:text-gray-400" />
                                     ) : (
-                                        <User className="w-6 h-6 text-gray-400" />
+                                        <User className="w-6 h-6 text-gray-400 dark:text-gray-400" />
                                     )}
                                 </div>
 
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-semibold text-white truncate">{entry.title}</h3>
+                                        <h3 className="font-semibold text-gray-800 dark:text-white truncate">{entry.title}</h3>
                                         <button
                                             onClick={() => handleToggleFavorite(entry.id)}
                                             className="transition-colors"
@@ -298,26 +298,26 @@ export default function Vault() {
                                             <Star
                                                 className={`w-4 h-4 ${entry.is_favorite
                                                     ? 'text-yellow-400 fill-yellow-400'
-                                                    : 'text-gray-600 hover:text-yellow-400'
+                                                    : 'text-gray-300 hover:text-yellow-400 dark:text-gray-600 dark:hover:text-yellow-400'
                                                     }`}
                                             />
                                         </button>
                                     </div>
 
                                     {entry.username && (
-                                        <p className="text-sm text-gray-400 truncate">
-                                            <span className="text-gray-500">Usuario:</span> {entry.username}
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                            <span className="text-gray-400 dark:text-gray-500">Usuario:</span> {entry.username}
                                         </p>
                                     )}
                                     {entry.url && (
-                                        <p className="text-sm text-gray-500 truncate">
+                                        <p className="text-sm text-gray-400 dark:text-gray-500 truncate">
                                             {entry.url}
                                         </p>
                                     )}
 
                                     {/* Password */}
                                     <div className="flex items-center gap-2 mt-2">
-                                        <span className="font-mono-password text-sm text-gray-300">
+                                        <span className="font-mono-password text-sm text-gray-600 dark:text-gray-300">
                                             {showPassword[entry.id] ? decryptedPasswords[entry.id] : '•'.repeat(16)}
                                         </span>
                                     </div>
@@ -374,7 +374,7 @@ export default function Vault() {
                                     )}
                                     <button
                                         onClick={() => handleDelete(entry.id)}
-                                        className="btn-ghost p-2 text-red-400 hover:text-red-300"
+                                        className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
                                         title="Eliminar"
                                     >
                                         <Trash2 className="w-4 h-4" />

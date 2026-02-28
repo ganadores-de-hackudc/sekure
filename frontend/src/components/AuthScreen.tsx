@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { register, login } from '../api';
+import { useTheme } from '../ThemeContext';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, ArrowRight, UserPlus, LogIn } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, UserPlus, LogIn, Moon, Sun } from 'lucide-react';
 
 type AuthMode = 'login' | 'register';
 
@@ -16,6 +17,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const { theme, toggleTheme } = useTheme();
 
     const switchMode = (m: AuthMode) => {
         setMode(m);
@@ -61,11 +63,20 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-950">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-beige-100 dark:bg-gray-950 relative">
+            {/* Theme toggle - top right */}
+            <button
+                onClick={toggleTheme}
+                className="fixed top-4 right-4 z-50 theme-toggle-btn"
+                title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+            >
+                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+
             {/* Background decoration */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sekure-600/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-sekure-500/5 rounded-full blur-3xl" />
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sekure-200/30 dark:bg-sekure-600/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-beige-300/40 dark:bg-sekure-500/5 rounded-full blur-3xl" />
             </div>
 
             <div className="w-full max-w-md relative animate-slide-up">
@@ -76,12 +87,12 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex rounded-xl bg-gray-800/50 p-1 mb-8">
+                    <div className="flex rounded-md bg-gray-100 dark:bg-gray-800/50 p-1 mb-8">
                         <button
                             onClick={() => switchMode('login')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'login'
-                                ? 'bg-sekure-600 text-white shadow-lg'
-                                : 'text-gray-400 hover:text-gray-200'
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded text-sm font-medium transition-all ${mode === 'login'
+                                ? 'bg-sekure-600 text-white shadow-md'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                                 }`}
                         >
                             <LogIn className="w-4 h-4" />
@@ -89,9 +100,9 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                         </button>
                         <button
                             onClick={() => switchMode('register')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'register'
-                                ? 'bg-sekure-600 text-white shadow-lg'
-                                : 'text-gray-400 hover:text-gray-200'
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded text-sm font-medium transition-all ${mode === 'register'
+                                ? 'bg-sekure-600 text-white shadow-md'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                                 }`}
                         >
                             <UserPlus className="w-4 h-4" />
@@ -99,7 +110,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                         </button>
                     </div>
 
-                    <p className="text-gray-400 mb-6">
+                    <p className="text-gray-500 dark:text-gray-400 mb-6">
                         {mode === 'login'
                             ? 'Introduce tus credenciales para acceder a tu bóveda'
                             : 'Crea una cuenta para proteger tus contraseñas'}
@@ -126,7 +137,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
                             >
                                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
@@ -159,7 +170,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                     </form>
 
                     {mode === 'register' && (
-                        <p className="text-xs text-gray-500 mt-4">
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
                             Tu contraseña maestra cifra todas tus credenciales.
                             <br />No se puede recuperar si la olvidas.
                         </p>

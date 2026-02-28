@@ -50,12 +50,12 @@ export default function Generator() {
 
     const strengthColor = (strength: string) => {
         switch (strength) {
-            case 'Muy débil': return 'text-red-400';
-            case 'Débil': return 'text-orange-400';
-            case 'Moderada': return 'text-yellow-400';
-            case 'Fuerte': return 'text-sekure-400';
-            case 'Muy fuerte': return 'text-sekure-300';
-            default: return 'text-gray-400';
+            case 'Muy débil': return 'text-red-500 dark:text-red-400';
+            case 'Débil': return 'text-orange-500 dark:text-orange-400';
+            case 'Moderada': return 'text-yellow-600 dark:text-yellow-400';
+            case 'Fuerte': return 'text-sekure-600 dark:text-sekure-400';
+            case 'Muy fuerte': return 'text-sekure-500 dark:text-sekure-300';
+            default: return 'text-gray-500 dark:text-gray-400';
         }
     };
 
@@ -84,11 +84,11 @@ export default function Generator() {
     return (
         <div>
             <div className="mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                    <KeyRound className="w-8 h-8 text-sekure-500" />
+                <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-gray-800 dark:text-white">
+                    <KeyRound className="w-8 h-8 text-sekure-600 dark:text-sekure-500" />
                     Generador de Contraseñas
                 </h2>
-                <p className="text-gray-400 mt-2">
+                <p className="text-gray-500 dark:text-gray-400 mt-2">
                     Genera contraseñas robustas con distintos métodos criptográficamente seguros
                 </p>
             </div>
@@ -96,7 +96,7 @@ export default function Generator() {
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Configuration */}
                 <div className="card space-y-6">
-                    <h3 className="text-lg font-semibold">Configuración</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Configuración</h3>
 
                     {/* Method selector */}
                     <div className="grid grid-cols-3 gap-2">
@@ -104,9 +104,9 @@ export default function Generator() {
                             <button
                                 key={value}
                                 onClick={() => setConfig({ ...config, method: value as any })}
-                                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 ${config.method === value
-                                        ? 'border-sekure-500 bg-sekure-600/10 text-sekure-400'
-                                        : 'border-gray-700 hover:border-gray-600 text-gray-400'
+                                className={`flex flex-col items-center gap-2 p-3 rounded-md border transition-all duration-200 ${config.method === value
+                                    ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400'
+                                    : 'border-gray-200 hover:border-gray-300 text-gray-500 dark:border-gray-700 dark:hover:border-gray-600 dark:text-gray-400'
                                     }`}
                             >
                                 <Icon className="w-5 h-5" />
@@ -115,7 +115,7 @@ export default function Generator() {
                         ))}
                     </div>
 
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
                         {methodOptions.find(m => m.value === config.method)?.desc}
                     </p>
 
@@ -124,8 +124,8 @@ export default function Generator() {
                         <>
                             <div>
                                 <div className="flex justify-between mb-2">
-                                    <label className="text-sm text-gray-300">Longitud</label>
-                                    <span className="text-sm font-mono text-sekure-400">{config.length}</span>
+                                    <label className="text-sm text-gray-600 dark:text-gray-300">Longitud</label>
+                                    <span className="text-sm font-mono text-sekure-600 dark:text-sekure-400">{config.length}</span>
                                 </div>
                                 <input
                                     type="range"
@@ -135,14 +135,14 @@ export default function Generator() {
                                     onChange={(e) => setConfig({ ...config, length: +e.target.value })}
                                     className="w-full accent-sekure-500"
                                 />
-                                <div className="flex justify-between text-xs text-gray-600 mt-1">
+                                <div className="flex justify-between text-xs text-gray-400 dark:text-gray-600 mt-1">
                                     <span>8</span>
                                     <span>64</span>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm text-gray-300">Incluir caracteres</label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Incluir caracteres</label>
                                 {[
                                     { key: 'include_uppercase', label: 'Mayúsculas (A-Z)', icon: 'A' },
                                     { key: 'include_lowercase', label: 'Minúsculas (a-z)', icon: 'a' },
@@ -162,13 +162,13 @@ export default function Generator() {
                                                 }
                                                 className="sr-only peer"
                                             />
-                                            <div className="w-10 h-6 bg-gray-700 rounded-full peer-checked:bg-sekure-600 transition-colors" />
-                                            <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full peer-checked:translate-x-4 transition-transform" />
+                                            <div className="w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full peer-checked:bg-sekure-600 transition-colors" />
+                                            <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full peer-checked:translate-x-4 transition-transform shadow-sm" />
                                         </div>
-                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gray-800 text-xs font-mono text-gray-300">
+                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-mono text-gray-600 dark:text-gray-300">
                                             {icon}
                                         </span>
-                                        <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                                        <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-800 dark:group-hover:text-white transition-colors">
                                             {label}
                                         </span>
                                     </label>
@@ -182,8 +182,8 @@ export default function Generator() {
                         <>
                             <div>
                                 <div className="flex justify-between mb-2">
-                                    <label className="text-sm text-gray-300">Número de palabras</label>
-                                    <span className="text-sm font-mono text-sekure-400">{config.num_words}</span>
+                                    <label className="text-sm text-gray-600 dark:text-gray-300">Número de palabras</label>
+                                    <span className="text-sm font-mono text-sekure-600 dark:text-sekure-400">{config.num_words}</span>
                                 </div>
                                 <input
                                     type="range"
@@ -195,15 +195,15 @@ export default function Generator() {
                                 />
                             </div>
                             <div>
-                                <label className="text-sm text-gray-300 block mb-2">Separador</label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">Separador</label>
                                 <div className="flex gap-2">
                                     {['-', '.', '_', ' ', '~'].map((sep) => (
                                         <button
                                             key={sep}
                                             onClick={() => setConfig({ ...config, separator: sep })}
-                                            className={`w-10 h-10 rounded-lg font-mono text-lg flex items-center justify-center border transition-colors ${config.separator === sep
-                                                    ? 'border-sekure-500 bg-sekure-600/10 text-sekure-400'
-                                                    : 'border-gray-700 text-gray-400 hover:border-gray-600'
+                                            className={`w-10 h-10 rounded-md font-mono text-lg flex items-center justify-center border transition-colors ${config.separator === sep
+                                                ? 'border-sekure-500 bg-sekure-50 text-sekure-700 dark:bg-sekure-600/10 dark:text-sekure-400'
+                                                : 'border-gray-200 text-gray-500 hover:border-gray-300 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600'
                                                 }`}
                                         >
                                             {sep === ' ' ? '⎵' : sep}
@@ -218,8 +218,8 @@ export default function Generator() {
                     {config.method === 'pin' && (
                         <div>
                             <div className="flex justify-between mb-2">
-                                <label className="text-sm text-gray-300">Longitud del PIN</label>
-                                <span className="text-sm font-mono text-sekure-400">{config.length}</span>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Longitud del PIN</label>
+                                <span className="text-sm font-mono text-sekure-600 dark:text-sekure-400">{config.length}</span>
                             </div>
                             <input
                                 type="range"
@@ -250,18 +250,18 @@ export default function Generator() {
 
                 {/* Result */}
                 <div className="card space-y-6">
-                    <h3 className="text-lg font-semibold">Resultado</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Resultado</h3>
 
                     {result ? (
                         <div className="animate-fade-in space-y-6">
                             {/* Password display */}
-                            <div className="relative bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-                                <p className="font-mono-password text-lg md:text-xl break-all pr-10 text-white select-all">
+                            <div className="relative bg-gray-50 dark:bg-gray-800/50 rounded-md p-4 border border-gray-200 dark:border-gray-700">
+                                <p className="font-mono-password text-lg md:text-xl break-all pr-10 text-gray-800 dark:text-white select-all">
                                     {result.password}
                                 </p>
                                 <button
                                     onClick={copyToClipboard}
-                                    className="absolute top-3 right-3 p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                    className="absolute top-3 right-3 p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"
                                     title="Copiar"
                                 >
                                     <Copy className="w-5 h-5" />
@@ -274,11 +274,11 @@ export default function Generator() {
                                     <span className={`font-semibold ${strengthColor(result.strength)}`}>
                                         {result.strength}
                                     </span>
-                                    <span className="text-sm text-gray-400">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">
                                         {result.entropy} bits de entropía
                                     </span>
                                 </div>
-                                <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                                <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all duration-500 ${strengthBg(result.strength)}`}
                                         style={{ width: `${strengthPercent(result.strength)}%` }}
@@ -288,13 +288,13 @@ export default function Generator() {
 
                             {/* Stats */}
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gray-800/50 rounded-xl p-3 text-center">
-                                    <p className="text-xs text-gray-400 mb-1">Entropía</p>
-                                    <p className="text-lg font-bold text-sekure-400">{result.entropy} bits</p>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Entropía</p>
+                                    <p className="text-lg font-bold text-sekure-600 dark:text-sekure-400">{result.entropy} bits</p>
                                 </div>
-                                <div className="bg-gray-800/50 rounded-xl p-3 text-center">
-                                    <p className="text-xs text-gray-400 mb-1">Tiempo de crackeo</p>
-                                    <p className="text-lg font-bold text-white truncate">{result.crack_time}</p>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md p-3 text-center border border-gray-100 dark:border-transparent">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tiempo de crackeo</p>
+                                    <p className="text-lg font-bold text-gray-800 dark:text-white truncate">{result.crack_time}</p>
                                 </div>
                             </div>
 
@@ -314,10 +314,10 @@ export default function Generator() {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+                        <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-600">
                             <KeyRound className="w-16 h-16 mb-4 strokeWidth-1" />
                             <p className="text-lg">Configura y genera una contraseña</p>
-                            <p className="text-sm text-gray-700 mt-1">
+                            <p className="text-sm text-gray-300 dark:text-gray-700 mt-1">
                                 Usa los controles de la izquierda
                             </p>
                         </div>

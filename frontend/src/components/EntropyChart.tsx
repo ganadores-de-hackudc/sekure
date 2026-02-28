@@ -2,14 +2,17 @@ import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import type { EntropyBreakdown } from '../types';
+import { useTheme } from '../ThemeContext';
 
 interface EntropyChartProps {
     data: EntropyBreakdown[];
 }
 
 export default function EntropyChart({ data }: EntropyChartProps) {
+    const { theme } = useTheme();
+
     if (!data || data.length === 0) {
-        return <p className="text-gray-500 text-sm text-center py-8">Sin datos</p>;
+        return <p className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">Sin datos</p>;
     }
 
     const chartData = data.map((d) => ({
@@ -28,6 +31,9 @@ export default function EntropyChart({ data }: EntropyChartProps) {
         other: '#6b7280',
     };
 
+    const axisColor = theme === 'dark' ? '#6b7280' : '#9ca3af';
+    const gridColor = theme === 'dark' ? '#374151' : '#d1d5db';
+
     return (
         <div>
             <div className="h-48">
@@ -41,22 +47,22 @@ export default function EntropyChart({ data }: EntropyChartProps) {
                         </defs>
                         <XAxis
                             dataKey="position"
-                            tick={{ fontSize: 11, fill: '#6b7280' }}
-                            axisLine={{ stroke: '#374151' }}
+                            tick={{ fontSize: 11, fill: axisColor }}
+                            axisLine={{ stroke: gridColor }}
                             tickLine={false}
                         />
                         <YAxis
-                            tick={{ fontSize: 11, fill: '#6b7280' }}
-                            axisLine={{ stroke: '#374151' }}
+                            tick={{ fontSize: 11, fill: axisColor }}
+                            axisLine={{ stroke: gridColor }}
                             tickLine={false}
                             unit=" bits"
                         />
                         <Tooltip
                             contentStyle={{
-                                background: '#1f2937',
-                                border: '1px solid #374151',
-                                borderRadius: '8px',
-                                color: '#f3f4f6',
+                                background: theme === 'dark' ? '#1f2937' : '#ffffff',
+                                border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                                borderRadius: '6px',
+                                color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
                                 fontSize: '13px',
                             }}
                             formatter={(value: number) => [`${value} bits`, 'Entropía acumulada']}
@@ -81,7 +87,7 @@ export default function EntropyChart({ data }: EntropyChartProps) {
                 {data.map((d, i) => (
                     <span
                         key={i}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-mono font-bold border border-gray-700"
+                        className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-mono font-bold border border-gray-200 dark:border-gray-700"
                         style={{ color: typeColorMap[d.type] || '#6b7280' }}
                         title={`${d.type}: +${d.bits} bits`}
                     >

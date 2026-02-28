@@ -62,10 +62,10 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/40 dark:bg-black/60" onClick={onClose} />
             <div className="relative w-full max-w-lg card animate-slide-up max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold">Guardar en Bóveda</h3>
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">Guardar en Bóveda</h3>
                     <button onClick={onClose} className="btn-ghost p-2">
                         <X className="w-5 h-5" />
                     </button>
@@ -73,7 +73,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="text-sm text-gray-300 block mb-1">Título *</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">Título *</label>
                         <input
                             type="text"
                             value={title}
@@ -85,7 +85,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                     </div>
 
                     <div>
-                        <label className="text-sm text-gray-300 block mb-1">Usuario / Email</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">Usuario / Email</label>
                         <input
                             type="text"
                             value={username}
@@ -96,7 +96,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                     </div>
 
                     <div>
-                        <label className="text-sm text-gray-300 block mb-1">URL</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">URL</label>
                         <input
                             type="text"
                             value={url}
@@ -107,7 +107,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                     </div>
 
                     <div>
-                        <label className="text-sm text-gray-300 block mb-1">Contraseña *</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">Contraseña *</label>
                         <div className="relative">
                             <input
                                 type={showPassword ? 'text' : 'password'}
@@ -119,7 +119,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                             >
                                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
@@ -127,7 +127,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                     </div>
 
                     <div>
-                        <label className="text-sm text-gray-300 block mb-1">Notas</label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">Notas</label>
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
@@ -140,9 +140,9 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                     <button
                         type="button"
                         onClick={() => setIsFavorite(!isFavorite)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${isFavorite
-                                ? 'bg-yellow-600/15 text-yellow-400 border border-yellow-600/30'
-                                : 'bg-gray-800 text-gray-400 border border-gray-700'
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${isFavorite
+                            ? 'bg-yellow-50 text-yellow-600 border border-yellow-300 dark:bg-yellow-600/15 dark:text-yellow-400 dark:border-yellow-600/30'
+                            : 'bg-gray-50 text-gray-500 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
                             }`}
                     >
                         <Star className={`w-4 h-4 ${isFavorite ? 'fill-yellow-400' : ''}`} />
@@ -152,7 +152,7 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                     {/* Tags */}
                     {tags.length > 0 && (
                         <div>
-                            <label className="text-sm text-gray-300 block mb-2">Etiquetas</label>
+                            <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">Etiquetas</label>
                             <div className="flex flex-wrap gap-2">
                                 {tags.map((tag) => (
                                     <button
@@ -160,8 +160,8 @@ export default function SaveToVaultModal({ password: initialPassword, onClose }:
                                         type="button"
                                         onClick={() => toggleTag(tag.id)}
                                         className={`badge border transition-colors ${selectedTags.includes(tag.id)
-                                                ? 'border-opacity-50'
-                                                : 'border-gray-700 text-gray-400'
+                                            ? 'border-opacity-50'
+                                            : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'
                                             }`}
                                         style={{
                                             backgroundColor: selectedTags.includes(tag.id) ? `${tag.color}20` : undefined,

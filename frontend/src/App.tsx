@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { getAuthStatus, clearToken } from './api';
 import type { AuthStatus } from './types';
+import { ThemeProvider } from './ThemeContext';
 import Layout from './components/Layout';
 import AuthScreen from './components/AuthScreen';
 import Generator from './components/Generator';
@@ -34,28 +35,36 @@ export default function App() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-sekure-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-gray-400">Cargando Sekure...</p>
+            <ThemeProvider>
+                <div className="min-h-screen flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-sekure-500 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-gray-500 dark:text-gray-400">Cargando Sekure...</p>
+                    </div>
                 </div>
-            </div>
+            </ThemeProvider>
         );
     }
 
     if (!auth?.authenticated) {
-        return <AuthScreen onAuthenticated={refreshAuth} />;
+        return (
+            <ThemeProvider>
+                <AuthScreen onAuthenticated={refreshAuth} />
+            </ThemeProvider>
+        );
     }
 
     return (
-        <Layout username={auth.user?.username ?? ''} onLogout={handleLogout}>
-            <Routes>
-                <Route path="/" element={<Navigate to="/generator" replace />} />
-                <Route path="/generator" element={<Generator />} />
-                <Route path="/checker" element={<Checker />} />
-                <Route path="/vault" element={<Vault />} />
-                <Route path="*" element={<Navigate to="/generator" replace />} />
-            </Routes>
-        </Layout>
+        <ThemeProvider>
+            <Layout username={auth.user?.username ?? ''} onLogout={handleLogout}>
+                <Routes>
+                    <Route path="/" element={<Navigate to="/generator" replace />} />
+                    <Route path="/generator" element={<Generator />} />
+                    <Route path="/checker" element={<Checker />} />
+                    <Route path="/vault" element={<Vault />} />
+                    <Route path="*" element={<Navigate to="/generator" replace />} />
+                </Routes>
+            </Layout>
+        </ThemeProvider>
     );
 }

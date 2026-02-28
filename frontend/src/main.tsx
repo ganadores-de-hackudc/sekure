@@ -12,22 +12,23 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Toaster
                 position="bottom-right"
                 toastOptions={{
+                    className: 'toast-themed',
                     style: {
-                        background: '#1f2937',
-                        color: '#f3f4f6',
-                        border: '1px solid #374151',
-                        borderRadius: '12px',
+                        background: 'var(--toast-bg, #ffffff)',
+                        color: 'var(--toast-text, #1f2937)',
+                        border: '1px solid var(--toast-border, #e5e7eb)',
+                        borderRadius: '8px',
                     },
                     success: {
                         iconTheme: {
                             primary: '#9b1b2f',
-                            secondary: '#f3f4f6',
+                            secondary: '#ffffff',
                         },
                     },
                     error: {
                         iconTheme: {
                             primary: '#ef4444',
-                            secondary: '#f3f4f6',
+                            secondary: '#ffffff',
                         },
                     },
                 }}
