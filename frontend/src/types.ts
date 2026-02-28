@@ -60,12 +60,12 @@ export interface VaultEntryWithPassword extends VaultEntry {
 
 export interface AuthStatus {
     authenticated: boolean;
-    user?: { id: number; username: string };
+    user?: { id: number; username: string; is_kids_account?: boolean };
 }
 
 export interface AuthResponse {
     token: string;
-    user: { id: number; username: string };
+    user: { id: number; username: string; is_kids_account?: boolean };
 }
 
 // --- Groups ---
@@ -110,4 +110,12 @@ export interface GroupPassword {
 
 export interface GroupPasswordWithPassword extends GroupPassword {
     password: string;
+}
+
+// --- Sekure Kids ---
+
+export interface KidsAccount {
+    id: number;
+    username: string;
+    created_at: string;
 }

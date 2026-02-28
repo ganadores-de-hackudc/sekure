@@ -174,3 +174,18 @@ class GroupPasswordOut(BaseModel):
 
 class GroupPasswordWithPassword(GroupPasswordOut):
     password: str
+
+
+# --- Sekure Kids ---
+class KidsAccountCreate(BaseModel):
+    username: str
+    password: str
+
+
+class KidsAccountOut(BaseModel):
+    id: int
+    username: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
