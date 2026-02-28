@@ -72,6 +72,7 @@ class UserSession(Base):
     token = Column(String, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     username = Column(String, nullable=False)
+    encryption_key = Column(String, nullable=False, default="")  # Legacy column — kept for DB compat
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
