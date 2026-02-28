@@ -12,10 +12,14 @@
 
     const DROPDOWN_ID = 'sekure-autofill-dropdown';
     const BANNER_ID = 'sekure-save-banner';
+    const PENDING_KEY = 'sekure_pending_save';
     let currentDropdown = null;
     let currentPasswordField = null;
     let matchingEntries = [];
     let isAuthenticated = false;
+
+    // Proactive credential tracking — stores the latest values as user types
+    let trackedCredentials = { username: '', password: '' };
 
     // ─── Utility ───
     function extractDomain(url) {
@@ -38,6 +42,8 @@
         if (isAuthenticated) {
             observePasswordFields();
             observeFormSubmissions();
+            // Check if we have pending credentials from a previous page navigation
+            checkPendingCredentials();
         }
     }
 
@@ -239,28 +245,93 @@
 
     // ─── Form submission detection (save password prompt) ───
     function observeFormSubmissions() {
-        // Listen for form submits
+        // 1. Track password/username field values as the user types
+        trackCredentialInputs();
+
+        // 2. On form submit, persist credentials to storage BEFORE page navigates
         document.addEventListener('submit', handleFormSubmit, true);
 
-        // Also listen for clicks on submit-like buttons (SPAs)
-        document.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[type="submit"], input[type="submit"], button:not([type])');
-            if (!btn) return;
-            const form = btn.closest('form');
-            if (form) {
-                // Form submit event will handle it
-                return;
-            }
-            // Check if there's a password field nearby (SPA login)
-            const container = btn.closest('div, section, main, article') || document.body;
-            const pwField = container.querySelector('input[type="password"]');
-            if (pwField && pwField.value) {
-                const userField = findUsernameField(container, pwField);
-                setTimeout(() => {
-                    maybeOfferSave(userField?.value || '', pwField.value);
-                }, 500);
+        // 3. Broad click listener for submit-like buttons (SPAs + traditional)
+        document.addEventListener('click', handleButtonClick, true);
+
+        // 4. Enter key on password fields
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target?.type === 'password' && e.target.value) {
+                captureAndPersist();
             }
         }, true);
+    }
+
+    function trackCredentialInputs() {
+        // Attach input listeners to all current and future password fields
+        function trackField(field) {
+            if (field.__sekureTracked) return;
+            field.__sekureTracked = true;
+
+            field.addEventListener('input', () => {
+                trackedCredentials.password = field.value;
+                // Also grab the username at this moment
+                const form = field.closest('form');
+                const container = form || field.closest('div, section, main, article') || document.body;
+                const userField = findUsernameField(container, field);
+                if (userField?.value) {
+                    trackedCredentials.username = userField.value;
+                }
+            }, true);
+
+            // Also capture on blur/change in case input event is suppressed
+            field.addEventListener('change', () => {
+                if (field.value) trackedCredentials.password = field.value;
+            }, true);
+        }
+
+        document.querySelectorAll('input[type="password"]').forEach(trackField);
+
+        const observer = new MutationObserver(mutations => {
+            for (const m of mutations) {
+                for (const node of m.addedNodes) {
+                    if (node.nodeType !== 1) continue;
+                    if (node.matches?.('input[type="password"]')) trackField(node);
+                    node.querySelectorAll?.('input[type="password"]')?.forEach(trackField);
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function captureAndPersist() {
+        // Grab the latest credentials from all visible password fields
+        let password = trackedCredentials.password;
+        let username = trackedCredentials.username;
+
+        // Also try to grab directly from visible fields as a fallback
+        const pwFields = document.querySelectorAll('input[type="password"]');
+        for (const f of pwFields) {
+            if (f.value) {
+                password = f.value;
+                const container = f.closest('form') || f.closest('div, section, main, article') || document.body;
+                const userField = findUsernameField(container, f);
+                if (userField?.value) username = userField.value;
+                break;
+            }
+        }
+
+        if (!password) return;
+
+        // Check if already saved
+        const alreadySaved = matchingEntries.some(e => e.username === username);
+        if (alreadySaved) return;
+
+        // Persist to chrome.storage so it survives page navigation
+        const pending = {
+            username,
+            password,
+            url: window.location.href,
+            domain: currentDomain,
+            timestamp: Date.now(),
+        };
+
+        chrome.storage.local.set({ [PENDING_KEY]: pending });
     }
 
     function handleFormSubmit(e) {
@@ -268,23 +339,93 @@
         if (!(form instanceof HTMLFormElement)) return;
 
         const pwField = form.querySelector('input[type="password"]');
-        if (!pwField || !pwField.value) return;
+        if (!pwField || (!pwField.value && !trackedCredentials.password)) return;
 
-        const userField = findUsernameField(form, pwField);
-        const username = userField?.value || '';
-        const password = pwField.value;
-
-        // Check if this is already saved
-        const alreadySaved = matchingEntries.some(entry =>
-            entry.username === username
-        );
-
-        if (!alreadySaved) {
-            // Delay slightly to let the page navigate
-            setTimeout(() => {
-                maybeOfferSave(username, password);
-            }, 800);
+        // Capture credentials and persist BEFORE navigation
+        if (pwField.value) {
+            trackedCredentials.password = pwField.value;
+            const userField = findUsernameField(form, pwField);
+            if (userField?.value) trackedCredentials.username = userField.value;
         }
+
+        captureAndPersist();
+
+        // Also try to show the banner immediately for SPA forms that don't navigate
+        const username = trackedCredentials.username;
+        const password = trackedCredentials.password;
+        setTimeout(() => {
+            maybeOfferSave(username, password);
+        }, 1000);
+    }
+
+    function handleButtonClick(e) {
+        // Match a wide range of submit-like elements
+        const btn = e.target.closest(
+            'button[type="submit"], input[type="submit"], button:not([type]), ' +
+            'button[type="button"], [role="button"], a.btn, a.button, ' +
+            '.submit-btn, .login-btn, .signin-btn, .signup-btn'
+        );
+        if (!btn) return;
+
+        // Check if there's a password field anywhere nearby
+        const form = btn.closest('form');
+        const container = form || btn.closest('div, section, main, article, [class*="form"], [class*="login"], [class*="auth"]') || document.body;
+        const pwField = container.querySelector('input[type="password"]');
+
+        if (!pwField && !trackedCredentials.password) return;
+
+        if (pwField?.value) {
+            trackedCredentials.password = pwField.value;
+            const userField = findUsernameField(container, pwField);
+            if (userField?.value) trackedCredentials.username = userField.value;
+        }
+
+        if (!trackedCredentials.password) return;
+
+        captureAndPersist();
+
+        // For SPAs, try showing the banner after a delay
+        const username = trackedCredentials.username;
+        const password = trackedCredentials.password;
+        setTimeout(() => {
+            maybeOfferSave(username, password);
+        }, 1500);
+    }
+
+    async function checkPendingCredentials() {
+        try {
+            const result = await chrome.storage.local.get(PENDING_KEY);
+            const pending = result[PENDING_KEY];
+            if (!pending) return;
+
+            // Only show if recent (< 30 seconds) and matches this domain
+            const age = Date.now() - pending.timestamp;
+            if (age > 30000) {
+                chrome.storage.local.remove(PENDING_KEY);
+                return;
+            }
+
+            // Domain must match (allows for redirects within same domain or to dashboard)
+            const pendingDomain = pending.domain;
+            if (pendingDomain !== currentDomain &&
+                !currentDomain.endsWith('.' + pendingDomain) &&
+                !pendingDomain.endsWith('.' + currentDomain)) {
+                // Different domain — still show if we just got redirected (common for OAuth)
+                // But clear it after showing once
+            }
+
+            // Clear the pending data
+            chrome.storage.local.remove(PENDING_KEY);
+
+            // Check if already saved
+            const alreadySaved = matchingEntries.some(e => e.username === pending.username);
+            if (alreadySaved) return;
+
+            // Show the save banner with a small delay for the page to settle
+            setTimeout(() => {
+                showSaveBanner(pending.username, pending.password, pending.url, pendingDomain);
+            }, 800);
+        } catch { /* ignore */ }
     }
 
     function maybeOfferSave(username, password) {
@@ -301,7 +442,7 @@
     }
 
     // ─── Save Password Banner ───
-    function showSaveBanner(username, password) {
+    function showSaveBanner(username, password, originalUrl, originalDomain) {
         const banner = document.createElement('div');
         banner.id = BANNER_ID;
         banner.style.cssText = `
@@ -319,7 +460,8 @@
             overflow: hidden;
         `;
 
-        const title = extractDomain(window.location.href) || 'este sitio';
+        const siteTitle = originalDomain || currentDomain || 'este sitio';
+        const saveUrl = originalUrl || window.location.href;
 
         banner.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:#fdf2f4; border-bottom:1px solid #fce4e8;">
@@ -341,7 +483,7 @@
             <div style="padding:14px 16px;">
                 <div style="margin-bottom:10px;">
                     <div style="font-size:11px; font-weight:500; color:#6b7280; margin-bottom:3px;">Sitio web</div>
-                    <div style="font-size:13px; color:#1f2937; font-weight:500;">${escapeHtml(title)}</div>
+                    <div style="font-size:13px; color:#1f2937; font-weight:500;">${escapeHtml(siteTitle)}</div>
                 </div>
                 ${username ? `
                     <div style="margin-bottom:10px;">
@@ -393,9 +535,9 @@
                 const res = await chrome.runtime.sendMessage({
                     type: 'SEKURE_SAVE_PASSWORD',
                     data: {
-                        title: title,
+                        title: siteTitle,
                         username: username,
-                        url: window.location.href,
+                        url: saveUrl,
                         password: password,
                     },
                 });
