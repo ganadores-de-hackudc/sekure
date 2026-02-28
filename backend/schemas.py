@@ -163,6 +163,14 @@ class GroupPasswordCreate(BaseModel):
     notes: Optional[str] = ""
 
 
+class GroupPasswordUpdate(BaseModel):
+    title: Optional[str] = None
+    username: Optional[str] = None
+    url: Optional[str] = None
+    password: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class GroupPasswordOut(BaseModel):
     id: int
     group_id: int

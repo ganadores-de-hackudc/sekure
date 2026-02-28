@@ -17,7 +17,7 @@ from schemas import (
     CheckRequest, CheckResponse,
     VaultEntryCreate, VaultEntryUpdate, VaultEntryOut, VaultEntryWithPassword,
     GroupCreate, GroupOut, GroupMemberOut, GroupInvite, GroupInvitationOut,
-    GroupPasswordCreate, GroupPasswordOut, GroupPasswordWithPassword,
+    GroupPasswordCreate, GroupPasswordUpdate, GroupPasswordOut, GroupPasswordWithPassword,
     KidsAccountCreate, KidsAccountUpdate, KidsAccountOut,
     ChangeUsername, ChangePassword, DeleteAccount,
     CreateShareLink,
@@ -892,6 +892,57 @@ def get_group_vault_entry(
         created_at=entry.created_at,
         updated_at=entry.updated_at,
         password=decrypted,
+    )
+
+
+@app.put("/api/groups/{group_id}/vault/{entry_id}", response_model=GroupPasswordOut)
+def update_group_vault_entry(
+    group_id: int,
+    entry_id: int,
+    data: GroupPasswordUpdate,
+    session=Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Update a password in a group vault. Only the group owner can edit."""
+    user_id = session["user_id"]
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(404, "Grupo no encontrado.")
+    if group.owner_id != user_id:
+        raise HTTPException(403, "Solo el creador del grupo puede editar contrase\u00f1as.")
+
+    entry = db.query(GroupPassword).filter(GroupPassword.id == entry_id, GroupPassword.group_id == group_id).first()
+    if not entry:
+        raise HTTPException(404, "Entrada no encontrada.")
+
+    if data.title is not None:
+        entry.title = data.title
+    if data.username is not None:
+        entry.username = data.username
+    if data.url is not None:
+        entry.url = data.url
+    if data.notes is not None:
+        entry.notes = data.notes
+    if data.password is not None:
+        group_key = base64.b64decode(group.encryption_key)
+        encrypted, iv = encrypt_password(data.password, group_key)
+        entry.encrypted_password = encrypted
+        entry.iv = iv
+
+    db.commit()
+    db.refresh(entry)
+
+    return GroupPasswordOut(
+        id=entry.id,
+        group_id=entry.group_id,
+        title=entry.title,
+        username=entry.username,
+        url=entry.url,
+        notes=entry.notes,
+        added_by=entry.added_by,
+        added_by_username=entry.added_by_user.username,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
     )
 
 

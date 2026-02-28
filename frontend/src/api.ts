@@ -217,6 +217,14 @@ export const deleteGroupVaultEntry = (groupId: number, entryId: number) =>
 export const importVaultEntryToGroup = (groupId: number, entryId: number) =>
     request<GroupPassword>(`/groups/${groupId}/vault/import/${entryId}`, { method: 'POST' });
 
+export const updateGroupVaultEntry = (groupId: number, entryId: number, data: {
+    title?: string; username?: string; url?: string; password?: string; notes?: string;
+}) =>
+    request<GroupPassword>(`/groups/${groupId}/vault/${entryId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+
 // Sekure Kids
 export const listKidsAccounts = () => request<KidsAccount[]>('/kids/accounts');
 export const createKidsAccount = (username: string, password: string) =>

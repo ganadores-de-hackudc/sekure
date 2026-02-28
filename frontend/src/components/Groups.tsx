@@ -3,7 +3,7 @@ import {
     listGroups, createGroup, deleteGroup, getGroup,
     inviteToGroup, kickFromGroup, leaveGroup,
     getPendingInvitations, acceptInvitation, ignoreInvitation,
-    listGroupVault, createGroupVaultEntry, getGroupVaultEntry, deleteGroupVaultEntry,
+    listGroupVault, createGroupVaultEntry, getGroupVaultEntry, deleteGroupVaultEntry, updateGroupVaultEntry,
     listGroupInvitations, cancelInvitation,
     listVault, importVaultEntryToGroup,
 } from '../api';
@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import {
     Users, Plus, Bell, ArrowLeft, Trash2, UserPlus, UserMinus,
     Eye, EyeOff, Copy, Globe, User, ExternalLink, Crown, X,
-    Save, Lock, LogOut, XCircle, Download, Link2,
+    Save, Lock, LogOut, XCircle, Download, Share2, Pencil,
 } from 'lucide-react';
 import ShareModal from './ShareModal';
 
@@ -45,6 +45,74 @@ function AddGroupPasswordModal({ groupId, onClose }: { groupId: number; onClose:
             <div className="relative w-full max-w-lg card animate-slide-up max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-gray-800 dark:text-white">{t('groups.add_password')}</h3>
+                    <button onClick={onClose} className="btn-ghost p-2"><X className="w-5 h-5" /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('save.entry_title')}</label>
+                        <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('save.entry_title_placeholder')} className="input-field" autoFocus />
+                    </div>
+                    <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('save.user_email')}</label>
+                        <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('save.user_email_placeholder')} className="input-field" />
+                    </div>
+                    <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('save.url')}</label>
+                        <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder={t('save.url_placeholder')} className="input-field" />
+                    </div>
+                    <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('save.password')}</label>
+                        <div className="relative">
+                            <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={t('save.password_placeholder')} className="input-field pr-12 font-mono-password" />
+                            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
+                                {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('save.notes')}</label>
+                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('save.notes_placeholder')} className="input-field resize-none h-20" />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="btn-secondary flex-1">{t('save.cancel')}</button>
+                        <button type="submit" disabled={loading || !title || !password} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Save className="w-4 h-4" />{t('save.save')}</>}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ─── Edit Group Password Modal ───
+function EditGroupPasswordModal({ groupId, entry, onClose }: { groupId: number; entry: GroupPasswordWithPassword; onClose: () => void }) {
+    const { t } = useLanguage();
+    const [title, setTitle] = useState(entry.title);
+    const [username, setUsername] = useState(entry.username || '');
+    const [url, setUrl] = useState(entry.url || '');
+    const [password, setPassword] = useState(entry.password);
+    const [notes, setNotes] = useState(entry.notes || '');
+    const [showPw, setShowPw] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title || !password) { toast.error(t('save.required')); return; }
+        setLoading(true);
+        try {
+            await updateGroupVaultEntry(groupId, entry.id, { title, username, url, password, notes });
+            toast.success(t('groups.password_saved'));
+            onClose();
+        } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 dark:bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-lg card animate-slide-up max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">{t('vault.edit')}</h3>
                     <button onClick={onClose} className="btn-ghost p-2"><X className="w-5 h-5" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -179,6 +247,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [shareEntry, setShareEntry] = useState<GroupPassword | null>(null);
+    const [editEntry, setEditEntry] = useState<GroupPasswordWithPassword | null>(null);
     const [showPassword, setShowPassword] = useState<Record<number, boolean>>({});
     const [decryptedPasswords, setDecryptedPasswords] = useState<Record<number, string>>({});
     const [showInviteInput, setShowInviteInput] = useState(false);
@@ -222,6 +291,13 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
             if (!pw) { const entry = await getGroupVaultEntry(group.id, id); pw = entry.password; setDecryptedPasswords({ ...decryptedPasswords, [id]: pw }); }
             await navigator.clipboard.writeText(pw);
             toast.success(t('vault.password_copied'));
+        } catch (err: any) { toast.error(err.message); }
+    };
+
+    const handleEditEntry = async (id: number) => {
+        try {
+            const entry = await getGroupVaultEntry(group.id, id);
+            setEditEntry(entry);
         } catch (err: any) { toast.error(err.message); }
     };
 
@@ -377,8 +453,9 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
                                         {showPassword[entry.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                     <button onClick={() => handleCopyPassword(entry.id)} className="btn-ghost p-2" title={t('vault.copy')}><Copy className="w-4 h-4" /></button>
+                                    {isOwner && <button onClick={() => handleEditEntry(entry.id)} className="btn-ghost p-2" title={t('vault.edit')}><Pencil className="w-4 h-4" /></button>}
+                                    <button onClick={() => setShareEntry(entry)} className="btn-ghost p-2" title={t('share.title')}><Share2 className="w-4 h-4" /></button>
                                     {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2" title={t('vault.open_url')}><ExternalLink className="w-4 h-4" /></a>}
-                                    <button onClick={() => setShareEntry(entry)} className="btn-ghost p-2" title={t('share.title')}><Link2 className="w-4 h-4" /></button>
                                     {isOwner && <button onClick={() => handleDeleteEntry(entry.id)} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300" title={t('vault.delete')}><Trash2 className="w-4 h-4" /></button>}
                                 </div>
                             </div>
@@ -390,6 +467,7 @@ function GroupVaultView({ group, onBack, currentUserId }: { group: Group; onBack
             {showAddModal && <AddGroupPasswordModal groupId={group.id} onClose={() => { setShowAddModal(false); fetchData(); }} />}
             {showImportModal && <ImportPasswordModal groupId={group.id} onClose={() => { setShowImportModal(false); fetchData(); }} />}
             {shareEntry && <ShareModal entryId={shareEntry.id} entryTitle={shareEntry.title} entryUrl={shareEntry.url} groupId={group.id} onClose={() => setShareEntry(null)} />}
+            {editEntry && <EditGroupPasswordModal groupId={group.id} entry={editEntry} onClose={() => { setEditEntry(null); fetchData(); }} />}
         </div>
     );
 }
