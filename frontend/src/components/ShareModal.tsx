@@ -92,7 +92,7 @@ export default function ShareModal({ entryId, entryTitle, entryUrl, onClose }: S
             });
 
             // 7. Build the link with the key in the fragment
-            const origin = 'https://sekure-woad.vercel.app';
+            const origin = window.location.origin;
             const link = `${origin}/share/${result.id}#${keyB64}`;
             setGeneratedLink(link);
         } catch (err: any) {
