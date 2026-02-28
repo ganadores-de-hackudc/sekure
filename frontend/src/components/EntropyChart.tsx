@@ -3,6 +3,7 @@ import {
 } from 'recharts';
 import type { EntropyBreakdown } from '../types';
 import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../i18n';
 
 interface EntropyChartProps {
     data: EntropyBreakdown[];
@@ -10,9 +11,10 @@ interface EntropyChartProps {
 
 export default function EntropyChart({ data }: EntropyChartProps) {
     const { theme } = useTheme();
+    const { t } = useLanguage();
 
     if (!data || data.length === 0) {
-        return <p className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">Sin datos</p>;
+        return <p className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">{t('chart.no_data')}</p>;
     }
 
     const chartData = data.map((d) => ({
@@ -45,18 +47,8 @@ export default function EntropyChart({ data }: EntropyChartProps) {
                                 <stop offset="95%" stopColor="#9b1b2f" stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <XAxis
-                            dataKey="position"
-                            tick={{ fontSize: 11, fill: axisColor }}
-                            axisLine={{ stroke: gridColor }}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            tick={{ fontSize: 11, fill: axisColor }}
-                            axisLine={{ stroke: gridColor }}
-                            tickLine={false}
-                            unit=" bits"
-                        />
+                        <XAxis dataKey="position" tick={{ fontSize: 11, fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={false} unit=" bits" />
                         <Tooltip
                             contentStyle={{
                                 background: theme === 'dark' ? '#1f2937' : '#ffffff',
@@ -65,32 +57,20 @@ export default function EntropyChart({ data }: EntropyChartProps) {
                                 color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
                                 fontSize: '13px',
                             }}
-                            formatter={(value: number) => [`${value} bits`, 'Entropía acumulada']}
+                            formatter={(value: number) => [`${value} bits`, t('check.cumulative_entropy')]}
                             labelFormatter={(label) => {
                                 const item = chartData[parseInt(label) - 1];
-                                return item ? `Posición ${label}: "${item.char}" (${item.type})` : `Posición ${label}`;
+                                return item ? `Pos. ${label}: "${item.char}" (${item.type})` : `Pos. ${label}`;
                             }}
                         />
-                        <Area
-                            type="monotone"
-                            dataKey="cumulative"
-                            stroke="#9b1b2f"
-                            strokeWidth={2}
-                            fill="url(#entropyGradient)"
-                        />
+                        <Area type="monotone" dataKey="cumulative" stroke="#9b1b2f" strokeWidth={2} fill="url(#entropyGradient)" />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
-
-            {/* Character type legend */}
             <div className="flex flex-wrap gap-2 mt-3 justify-center">
                 {data.map((d, i) => (
-                    <span
-                        key={i}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-mono font-bold border border-gray-200 dark:border-gray-700"
-                        style={{ color: typeColorMap[d.type] || '#6b7280' }}
-                        title={`${d.type}: +${d.bits} bits`}
-                    >
+                    <span key={i} className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-mono font-bold border border-gray-200 dark:border-gray-700"
+                        style={{ color: typeColorMap[d.type] || '#6b7280' }} title={`${d.type}: +${d.bits} bits`}>
                         {d.char}
                     </span>
                 ))}

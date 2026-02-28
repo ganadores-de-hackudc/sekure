@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { logout } from '../api';
 import { useTheme } from '../ThemeContext';
+import { useLanguage, LANGUAGES } from '../i18n';
 import toast from 'react-hot-toast';
 import {
     KeyRound, ShieldCheck, Archive,
-    LogOut, Menu, X, User, Moon, Sun,
+    LogOut, Menu, X, User, Moon, Sun, Globe, ChevronDown,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -14,37 +15,43 @@ interface LayoutProps {
     onLogout: () => void;
 }
 
-const navItems = [
-    { to: '/generator', icon: KeyRound, label: 'Generador' },
-    { to: '/checker', icon: ShieldCheck, label: 'Verificador' },
-    { to: '/vault', icon: Archive, label: 'Bóveda' },
-];
-
 export default function Layout({ children, username, onLogout }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [langOpen, setLangOpen] = useState(false);
+    const langRef = useRef<HTMLDivElement>(null);
     const { theme, toggleTheme } = useTheme();
+    const { lang, setLang, t } = useLanguage();
     const location = useLocation();
+
+    const navItems = [
+        { to: '/generator', icon: KeyRound, label: t('nav.generator') },
+        { to: '/checker', icon: ShieldCheck, label: t('nav.checker') },
+        { to: '/vault', icon: Archive, label: t('nav.vault') },
+    ];
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (langRef.current && !langRef.current.contains(e.target as Node)) {
+                setLangOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleLogout = async () => {
         try {
             await logout();
-            toast.success('Sesión cerrada');
+            toast.success(t('nav.logout_success'));
             onLogout();
         } catch {
-            toast.error('Error al cerrar sesión');
+            toast.error(t('nav.logout_error'));
             onLogout();
         }
     };
 
-    const ThemeToggle = () => (
-        <button
-            onClick={toggleTheme}
-            className="theme-toggle-btn"
-            title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
-        >
-            {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-        </button>
-    );
+    const currentLang = LANGUAGES.find(l => l.code === lang)!;
 
     return (
         <div className="min-h-screen flex bg-beige-50 dark:bg-gray-950">
@@ -76,7 +83,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                     </div>
                     <button onClick={handleLogout} className="sidebar-link text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-600/10">
                         <LogOut className="w-5 h-5" />
-                        Cerrar sesión
+                        {t('nav.logout')}
                     </button>
                 </div>
             </aside>
@@ -118,7 +125,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                             </div>
                             <button onClick={handleLogout} className="sidebar-link text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-600/10">
                                 <LogOut className="w-5 h-5" />
-                                Cerrar sesión
+                                {t('nav.logout')}
                             </button>
                         </div>
                     </aside>
@@ -127,7 +134,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
 
             {/* Main content */}
             <main className="flex-1 flex flex-col min-h-screen">
-                {/* Top bar with theme toggle */}
+                {/* Top bar with language selector + theme toggle */}
                 <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setSidebarOpen(true)} className="btn-ghost lg:hidden">
@@ -139,7 +146,47 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <ThemeToggle />
+                        {/* Language selector */}
+                        <div className="relative" ref={langRef}>
+                            <button
+                                onClick={() => setLangOpen(!langOpen)}
+                                className="theme-toggle-btn flex items-center gap-1.5 text-sm"
+                            >
+                                <img src={currentLang.flag} alt={currentLang.label} className="w-5 h-4 rounded-sm object-cover" />
+                                <span className="hidden sm:inline">{currentLang.label}</span>
+                                <ChevronDown className={`w-3 h-3 transition-transform ${langOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {langOpen && (
+                                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[140px] z-50 animate-fade-in">
+                                    {LANGUAGES.map((l) => (
+                                        <button
+                                            key={l.code}
+                                            onClick={() => {
+                                                setLang(l.code);
+                                                setLangOpen(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${lang === l.code
+                                                ? 'bg-sekure-50 text-sekure-700 dark:bg-sekure-600/15 dark:text-sekure-400'
+                                                : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                                                }`}
+                                        >
+                                            <img src={l.flag} alt={l.label} className="w-5 h-4 rounded-sm object-cover" />
+                                            <span>{l.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Theme toggle */}
+                        <button
+                            onClick={toggleTheme}
+                            className="theme-toggle-btn"
+                            title={theme === 'light' ? t('nav.dark_mode') : t('nav.light_mode')}
+                        >
+                            {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                        </button>
+
                         <button onClick={handleLogout} className="btn-ghost text-red-500 dark:text-red-400 lg:hidden">
                             <LogOut className="w-5 h-5" />
                         </button>
