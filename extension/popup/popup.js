@@ -67,7 +67,7 @@ async function doLogin(user, pass) {
         method: 'POST',
         body: JSON.stringify({ username: user, master_password: pass }),
     });
-    await chrome.storage.local.set({ token: res.token, username: res.username });
+    await chrome.storage.local.set({ token: res.token, username: res.user.username });
     return res;
 }
 

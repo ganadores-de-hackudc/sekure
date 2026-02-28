@@ -168,16 +168,9 @@ body {
     gap: 8px;
 }
 
-.header-logo svg {
-    width: 24px;
-    height: 24px;
-    color: var(--sekure-600);
-}
-
-.header-logo span {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--gray-800);
+.header-logo-img {
+    height: 28px;
+    width: auto;
 }
 
 /* ─── Login view ─── */
