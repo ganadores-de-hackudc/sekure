@@ -18,7 +18,7 @@ from schemas import (
     VaultEntryCreate, VaultEntryUpdate, VaultEntryOut, VaultEntryWithPassword,
     GroupCreate, GroupOut, GroupMemberOut, GroupInvite, GroupInvitationOut,
     GroupPasswordCreate, GroupPasswordOut, GroupPasswordWithPassword,
-    KidsAccountCreate, KidsAccountOut,
+    KidsAccountCreate, KidsAccountUpdate, KidsAccountOut,
     ChangeUsername, ChangePassword, DeleteAccount,
 )
 from crypto import (
@@ -962,6 +962,37 @@ def create_kids_account(data: KidsAccountCreate, session=Depends(get_current_ses
     db.commit()
     db.refresh(kid)
 
+    return KidsAccountOut(id=kid.id, username=kid.username, created_at=kid.created_at)
+
+
+@app.put("/api/kids/accounts/{kid_id}", response_model=KidsAccountOut)
+def update_kids_account(kid_id: int, data: KidsAccountUpdate, session=Depends(get_current_session), db: Session = Depends(get_db)):
+    """Update a kid's username and/or password. Only the parent can edit."""
+    user_id = session["user_id"]
+    kid = db.query(User).filter(User.id == kid_id, User.parent_id == user_id).first()
+    if not kid:
+        raise HTTPException(404, "Cuenta no encontrada.")
+
+    if data.username is not None:
+        new_name = data.username.strip()
+        if len(new_name) < 3:
+            raise HTTPException(400, "El nombre de usuario debe tener al menos 3 caracteres.")
+        existing = db.query(User).filter(User.username == new_name, User.id != kid.id).first()
+        if existing:
+            raise HTTPException(400, "El nombre de usuario ya está en uso.")
+        kid.username = new_name
+
+    if data.password is not None:
+        if len(data.password) < 4:
+            raise HTTPException(400, "La contraseña debe tener al menos 4 caracteres.")
+        new_salt = generate_salt()
+        kid.password_hash = hash_master_password(data.password, new_salt)
+        kid.salt = base64.b64encode(new_salt).decode("utf-8")
+        # Clear any active sessions for this kid
+        db.query(UserSession).filter(UserSession.user_id == kid.id).delete()
+
+    db.commit()
+    db.refresh(kid)
     return KidsAccountOut(id=kid.id, username=kid.username, created_at=kid.created_at)
 
 

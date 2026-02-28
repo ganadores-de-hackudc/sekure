@@ -239,6 +239,12 @@ const translations: Record<Lang, Record<string, string>> = {
         'kids.vault_empty_desc': 'Añade la primera contraseña',
         'kids.confirm_delete_entry': '¿Estás seguro de eliminar esta contraseña?',
         'kids.entry_deleted': 'Contraseña eliminada',
+        'kids.edit_account': 'Editar cuenta',
+        'kids.updated': 'Cuenta actualizada',
+        'kids.new_password': 'Nueva contraseña',
+        'kids.new_password_placeholder': 'Dejar vacío para no cambiar',
+        'kids.new_password_hint': 'Déjalo vacío si no quieres cambiar la contraseña.',
+        'kids.save_changes': 'Guardar cambios',
 
         // Profile
         'profile.title': 'Mi perfil',
@@ -503,6 +509,12 @@ const translations: Record<Lang, Record<string, string>> = {
         'kids.vault_empty_desc': 'Add the first password',
         'kids.confirm_delete_entry': 'Are you sure you want to delete this password?',
         'kids.entry_deleted': 'Password deleted',
+        'kids.edit_account': 'Edit account',
+        'kids.updated': 'Account updated',
+        'kids.new_password': 'New password',
+        'kids.new_password_placeholder': 'Leave empty to keep current',
+        'kids.new_password_hint': 'Leave empty if you don\'t want to change the password.',
+        'kids.save_changes': 'Save changes',
 
         // Profile
         'profile.title': 'My profile',
@@ -764,6 +776,12 @@ const translations: Record<Lang, Record<string, string>> = {
         'kids.vault_empty_desc': 'Engade o primeiro contrasinal',
         'kids.confirm_delete_entry': 'Estás seguro de eliminar este contrasinal?',
         'kids.entry_deleted': 'Contrasinal eliminado',
+        'kids.edit_account': 'Editar conta',
+        'kids.updated': 'Conta actualizada',
+        'kids.new_password': 'Novo contrasinal',
+        'kids.new_password_placeholder': 'Deixar baleiro para non cambiar',
+        'kids.new_password_hint': 'Déixao baleiro se non queres cambiar o contrasinal.',
+        'kids.save_changes': 'Gardar cambios',
 
         // Profile
         'profile.title': 'O meu perfil',

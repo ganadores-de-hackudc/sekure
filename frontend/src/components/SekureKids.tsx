@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    listKidsAccounts, createKidsAccount, deleteKidsAccount,
+    listKidsAccounts, createKidsAccount, deleteKidsAccount, updateKidsAccount,
     listKidsVault, createKidsVaultEntry, getKidsVaultEntry, deleteKidsVaultEntry,
 } from '../api';
 import type { KidsAccount, VaultEntry, VaultEntryWithPassword } from '../types';
@@ -8,7 +8,7 @@ import { useLanguage } from '../i18n';
 import toast from 'react-hot-toast';
 import {
     Plus, ArrowLeft, Trash2, Eye, EyeOff, Copy, Globe, User, ExternalLink, X,
-    Save, Lock, UserPlus,
+    Save, Lock, UserPlus, Pencil,
 } from 'lucide-react';
 
 /* ─── Add Password Modal (for kid's vault) ─── */
@@ -185,6 +185,71 @@ function KidVaultView({ kid, onBack }: { kid: KidsAccount; onBack: () => void })
     );
 }
 
+/* ─── Edit Kid Modal ─── */
+function EditKidModal({ kid, onClose, onUpdated }: { kid: KidsAccount; onClose: () => void; onUpdated: () => void }) {
+    const { t } = useLanguage();
+    const [username, setUsername] = useState(kid.username);
+    const [password, setPassword] = useState('');
+    const [showPw, setShowPw] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const updates: { username?: string; password?: string } = {};
+        if (username.trim() !== kid.username) updates.username = username.trim();
+        if (password) updates.password = password;
+        if (Object.keys(updates).length === 0) { onClose(); return; }
+
+        setLoading(true);
+        try {
+            await updateKidsAccount(kid.id, updates);
+            toast.success(t('kids.updated'));
+            onUpdated();
+            onClose();
+        } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 dark:bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-md card animate-slide-up">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white">{t('kids.edit_account')}</h3>
+                    <button onClick={onClose} className="btn-ghost p-2"><X className="w-5 h-5" /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('auth.username')}</label>
+                        <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="input-field" autoFocus />
+                    </div>
+                    <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">{t('kids.new_password')}</label>
+                        <div className="relative">
+                            <input
+                                type={showPw ? 'text' : 'password'}
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                placeholder={t('kids.new_password_placeholder')}
+                                className="input-field pr-12"
+                            />
+                            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
+                                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('kids.new_password_hint')}</p>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <button type="button" onClick={onClose} className="btn-secondary flex-1">{t('save.cancel')}</button>
+                        <button type="submit" disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                            {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Save className="w-4 h-4" />{t('kids.save_changes')}</>}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 /* ─── Main SekureKids Component (for normal parent users) ─── */
 export default function SekureKids() {
     const { t } = useLanguage();
@@ -196,6 +261,7 @@ export default function SekureKids() {
     const [showPw, setShowPw] = useState(false);
     const [creating, setCreating] = useState(false);
     const [selectedKid, setSelectedKid] = useState<KidsAccount | null>(null);
+    const [editingKid, setEditingKid] = useState<KidsAccount | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -292,6 +358,9 @@ export default function SekureKids() {
                                     <h3 className="font-semibold text-gray-800 dark:text-white truncate">{kid.username}</h3>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">{t('kids.account_type')}</p>
                                 </div>
+                                <button onClick={e => { e.stopPropagation(); setEditingKid(kid); }} className="btn-ghost p-2 text-gray-400 hover:text-sekure-600 dark:text-gray-500 dark:hover:text-sekure-400 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title={t('kids.edit_account')}>
+                                    <Pencil className="w-4 h-4" />
+                                </button>
                                 <button onClick={e => { e.stopPropagation(); handleDelete(kid.id); }} className="btn-ghost p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title={t('kids.delete_account')}>
                                     <Trash2 className="w-4 h-4" />
                                 </button>
@@ -299,6 +368,15 @@ export default function SekureKids() {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {/* Edit kid modal */}
+            {editingKid && (
+                <EditKidModal
+                    kid={editingKid}
+                    onClose={() => setEditingKid(null)}
+                    onUpdated={fetchData}
+                />
             )}
         </div>
     );

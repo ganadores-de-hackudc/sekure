@@ -221,6 +221,11 @@ export const createKidsAccount = (username: string, password: string) =>
         method: 'POST',
         body: JSON.stringify({ username, password }),
     });
+export const updateKidsAccount = (id: number, data: { username?: string; password?: string }) =>
+    request<KidsAccount>(`/kids/accounts/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
 export const deleteKidsAccount = (id: number) =>
     request<{ message: string }>(`/kids/accounts/${id}`, { method: 'DELETE' });
 
