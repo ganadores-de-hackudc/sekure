@@ -247,7 +247,7 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
                     </div>
                 </header>
 
-                <div className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto">
+                <div className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto overflow-x-hidden">
                     <div className="max-w-5xl mx-auto animate-fade-in">
                         {children}
                     </div>
