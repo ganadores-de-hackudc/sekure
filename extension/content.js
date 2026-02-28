@@ -112,6 +112,9 @@
 
     const currentDomain = extractDomain(window.location.href);
 
+    // ─── Skip ALL extension functionality on Sekure's own pages ───
+    if (isSekureDomain(currentDomain)) return;
+
     // ─── Check auth & load entries ───
     async function init() {
         try {
@@ -125,12 +128,9 @@
 
         if (isAuthenticated) {
             observePasswordFields();
-            // Don't offer to save passwords on Sekure's own login page
-            if (!isSekureDomain(currentDomain)) {
-                observeFormSubmissions();
-                // Check if we have pending credentials from a previous page navigation
-                checkPendingCredentials();
-            }
+            observeFormSubmissions();
+            // Check if we have pending credentials from a previous page navigation
+            checkPendingCredentials();
         }
     }
 

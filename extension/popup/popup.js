@@ -25,6 +25,23 @@ const currentSiteList = document.getElementById('currentSiteList');
 const passwordCount = document.getElementById('passwordCount');
 const toastContainer = document.getElementById('toastContainer');
 
+// ─── Clipboard helper (fallback for extension popups) ───
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch {
+        // Fallback for extension popup context
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+    }
+}
+
 let allEntries = [];
 let currentTabUrl = '';
 
@@ -155,7 +172,7 @@ function createPasswordItem(entry, showCopyBtn = true) {
     div.querySelector('.copy-user-btn')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (entry.username) {
-            await navigator.clipboard.writeText(entry.username);
+            await copyToClipboard(entry.username);
             showToast('Usuario copiado');
         }
     });
@@ -165,7 +182,7 @@ function createPasswordItem(entry, showCopyBtn = true) {
         e.stopPropagation();
         try {
             const pw = await fetchDecryptedPassword(entry.id);
-            await navigator.clipboard.writeText(pw);
+            await copyToClipboard(pw);
             showToast('Contraseña copiada');
         } catch (err) {
             showToast(err.message, 'error');
