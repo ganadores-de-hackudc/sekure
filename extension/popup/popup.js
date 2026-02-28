@@ -51,8 +51,6 @@ async function copyToClipboard(text) {
 
 let allEntries = [];
 let currentTabUrl = '';
-let _bioLastVerified = 0;
-const BIO_GRACE_MS = 30 * 1000; // 30 seconds
 
 // ─── Biometric helpers ───
 async function isBioAvailable() {
@@ -98,12 +96,10 @@ async function registerBio() {
 
 function disableBio() {
     localStorage.removeItem('sekure_bio_ext');
-    _bioLastVerified = 0;
 }
 
 async function requireBio() {
     if (!isBioEnabled()) return;
-    if (Date.now() - _bioLastVerified < BIO_GRACE_MS) return;
     const { credentialId } = JSON.parse(localStorage.getItem('sekure_bio_ext'));
     await navigator.credentials.get({
         publicKey: {
@@ -113,7 +109,6 @@ async function requireBio() {
             timeout: 60000,
         },
     });
-    _bioLastVerified = Date.now();
 }
 
 // ─── Biometric toggle UI ───

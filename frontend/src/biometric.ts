@@ -8,8 +8,6 @@
  */
 
 const STORAGE_KEY = 'sekure_biometric_cred';
-const LAST_VERIFIED_KEY = 'sekure_bio_last_verified';
-const GRACE_PERIOD_MS = 30 * 1000; // 30 seconds
 
 /** Check if this device supports a platform authenticator (fingerprint, face, PIN). */
 export async function isBiometricAvailable(): Promise<boolean> {
@@ -67,7 +65,6 @@ export async function registerBiometric(username: string): Promise<void> {
 /** Remove the stored biometric credential. */
 export function disableBiometric(): void {
     localStorage.removeItem(STORAGE_KEY);
-    sessionStorage.removeItem(LAST_VERIFIED_KEY);
 }
 
 /**
@@ -91,24 +88,15 @@ async function verifyBiometric(): Promise<boolean> {
     });
 
     // If we reach here, verification succeeded
-    sessionStorage.setItem(LAST_VERIFIED_KEY, Date.now().toString());
     return true;
 }
 
 /**
- * Main gate function: if biometric is enabled, check grace period or prompt.
+ * Main gate function: if biometric is enabled, prompt every time.
  * If biometric is not enabled, passes through silently.
  * Throws if the user cancels the biometric prompt.
  */
 export async function requireBiometric(): Promise<void> {
     if (!isBiometricEnabled()) return;
-
-    // Check grace period — skip prompt if recently verified
-    const lastStr = sessionStorage.getItem(LAST_VERIFIED_KEY);
-    if (lastStr) {
-        const elapsed = Date.now() - parseInt(lastStr, 10);
-        if (elapsed < GRACE_PERIOD_MS) return;
-    }
-
     await verifyBiometric();
 }
