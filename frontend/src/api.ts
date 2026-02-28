@@ -14,7 +14,7 @@ import type {
     KidsAccount,
 } from './types';
 
-const BASE = 'https://sekure-woad.vercel.app/api';
+const BASE = '/api';
 const TOKEN_KEY = 'sekure_token';
 
 let authToken: string | null = localStorage.getItem(TOKEN_KEY);
