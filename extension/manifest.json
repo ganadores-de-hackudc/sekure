@@ -13,7 +13,7 @@
         "<all_urls>"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' https://www.google.com https://*.google.com data:"
+        "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' https://www.google.com https://*.google.com https://*.gstatic.com data:"
     },
     "action": {
         "default_popup": "popup/popup.html",
