@@ -58,3 +58,15 @@ class Tag(Base):
 
     user = relationship("User", back_populates="tags")
     passwords = relationship("Password", secondary=password_tags, back_populates="tags")
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    token = Column(String, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    username = Column(String, nullable=False)
+    encryption_key = Column(String, nullable=False)  # base64-encoded derived key
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User")

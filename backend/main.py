@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import engine, get_db, Base
-from models import User, Password, Tag, password_tags
+from models import User, UserSession, Password, Tag, password_tags
 from schemas import (
     UserRegister, UserLogin,
     TagCreate, TagOut,
@@ -27,8 +27,14 @@ from password_utils import (
     analyze_password, check_hibp,
 )
 
-# --- In-memory session store: token -> {user_id, username, key} ---
-_sessions: dict[str, dict] = {}
+# --- DB-backed session helper ---
+def _load_session(token: str, db: Session) -> dict | None:
+    """Load session from database, return dict with user_id, username, key or None."""
+    sess = db.query(UserSession).filter(UserSession.token == token).first()
+    if not sess:
+        return None
+    key = base64.b64decode(sess.encryption_key)
+    return {"user_id": sess.user_id, "username": sess.username, "key": key}
 
 
 @asynccontextmanager
@@ -54,12 +60,12 @@ app.add_middleware(
 
 
 # --- Auth dependency ---
-def get_current_session(authorization: str = Header(default="")):
+def get_current_session(authorization: str = Header(default=""), db: Session = Depends(get_db)):
     """Extract and validate the Bearer token, returning session data."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No autenticado. Inicia sesión.")
     token = authorization.removeprefix("Bearer ")
-    session_data = _sessions.get(token)
+    session_data = _load_session(token, db)
     if not session_data:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sesión inválida o expirada.")
     return {"token": token, **session_data}
@@ -68,11 +74,11 @@ def get_current_session(authorization: str = Header(default="")):
 # ==================== AUTH ====================
 
 @app.get("/api/auth/status")
-def auth_status(authorization: str = Header(default="")):
+def auth_status(authorization: str = Header(default=""), db: Session = Depends(get_db)):
     if not authorization.startswith("Bearer "):
         return {"authenticated": False}
     token = authorization.removeprefix("Bearer ")
-    session_data = _sessions.get(token)
+    session_data = _load_session(token, db)
     if not session_data:
         return {"authenticated": False}
     return {
@@ -106,7 +112,14 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
     db.refresh(user)
 
     token = secrets.token_urlsafe(32)
-    _sessions[token] = {"user_id": user.id, "username": user.username, "key": key}
+    sess = UserSession(
+        token=token,
+        user_id=user.id,
+        username=user.username,
+        encryption_key=base64.b64encode(key).decode("utf-8"),
+    )
+    db.add(sess)
+    db.commit()
 
     return {"token": token, "user": {"id": user.id, "username": user.username}}
 
@@ -123,14 +136,22 @@ def login_user(data: UserLogin, db: Session = Depends(get_db)):
 
     key = derive_key(data.master_password, salt)
     token = secrets.token_urlsafe(32)
-    _sessions[token] = {"user_id": user.id, "username": user.username, "key": key}
+    sess = UserSession(
+        token=token,
+        user_id=user.id,
+        username=user.username,
+        encryption_key=base64.b64encode(key).decode("utf-8"),
+    )
+    db.add(sess)
+    db.commit()
 
     return {"token": token, "user": {"id": user.id, "username": user.username}}
 
 
 @app.post("/api/auth/logout")
-def logout_user(session=Depends(get_current_session)):
-    _sessions.pop(session["token"], None)
+def logout_user(session=Depends(get_current_session), db: Session = Depends(get_db)):
+    db.query(UserSession).filter(UserSession.token == session["token"]).delete()
+    db.commit()
     return {"message": "Sesión cerrada."}
 
 
