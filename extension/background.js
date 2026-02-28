@@ -49,12 +49,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 });
 
+// ─── Vault cache (30s TTL) ───
+let _vaultCache = null;
+let _vaultCacheTs = 0;
+const CACHE_TTL = 30_000;
+
 async function handleGetEntries(domain) {
     const { token } = await chrome.storage.local.get('token');
     if (!token) return { entries: [], allEntries: [], authenticated: false };
 
     try {
-        const entries = await apiRequest('/vault');
+        const now = Date.now();
+        let entries;
+        if (_vaultCache && (now - _vaultCacheTs) < CACHE_TTL) {
+            entries = _vaultCache;
+        } else {
+            entries = await apiRequest('/vault');
+            _vaultCache = entries;
+            _vaultCacheTs = now;
+        }
         const matching = domain
             ? entries.filter(e => {
                 if (!e.url) return false;
@@ -89,6 +102,8 @@ async function handleSavePassword(data) {
             notes: '',
         }),
     });
+    // Invalidate cache after saving a new entry
+    _vaultCache = null;
     return { success: true, entry };
 }
 

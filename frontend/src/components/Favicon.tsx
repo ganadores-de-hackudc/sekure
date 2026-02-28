@@ -23,6 +23,7 @@ export default function Favicon({ url, className = "w-6 h-6" }: { url: string; c
             src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
             alt={`${domain} icon`}
             className={`${className} rounded-sm object-contain flex-shrink-0`}
+            loading="lazy"
             onError={() => setError(true)}
         />
     );

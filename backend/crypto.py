@@ -1,11 +1,8 @@
 """
-Cryptographic utilities for Sekure password manager.
-Uses AES-256-GCM for encryption with PBKDF2-derived keys.
-"""
+Cryptographic utilities for Sekure password manager."""
 import os
 import base64
 import hashlib
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 
@@ -43,26 +40,3 @@ def verify_master_password(master_password: str, salt: bytes, stored_hash: str) 
 def generate_salt() -> bytes:
     """Generate a cryptographically secure random salt."""
     return os.urandom(32)
-
-
-def encrypt_password(plaintext: str, key: bytes) -> tuple[str, str]:
-    """
-    Encrypt a password using AES-256-GCM.
-    Returns (ciphertext_b64, iv_b64).
-    """
-    iv = os.urandom(12)  # 96-bit nonce for GCM
-    aesgcm = AESGCM(key)
-    ciphertext = aesgcm.encrypt(iv, plaintext.encode("utf-8"), None)
-    return (
-        base64.b64encode(ciphertext).decode("utf-8"),
-        base64.b64encode(iv).decode("utf-8"),
-    )
-
-
-def decrypt_password(ciphertext_b64: str, iv_b64: str, key: bytes) -> str:
-    """Decrypt a password using AES-256-GCM."""
-    ciphertext = base64.b64decode(ciphertext_b64)
-    iv = base64.b64decode(iv_b64)
-    aesgcm = AESGCM(key)
-    plaintext = aesgcm.decrypt(iv, ciphertext, None)
-    return plaintext.decode("utf-8")

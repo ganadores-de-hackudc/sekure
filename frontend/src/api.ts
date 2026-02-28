@@ -357,6 +357,25 @@ export const updateKidsAccount = (id: number, data: { username?: string; passwor
 export const deleteKidsAccount = (id: number) =>
     request<{ message: string }>(`/kids/accounts/${id}`, { method: 'DELETE' });
 
+// Cache kids info and derived keys to avoid repeated PBKDF2 + API calls
+const kidsInfoCache: Record<number, { kid_salt: string; kid_id: number; parent_id: number }> = {};
+const kidsKeyCache: Record<number, CryptoKey> = {};
+
+async function getKidsKey(kidId: number): Promise<CryptoKey> {
+    if (kidsKeyCache[kidId]) return kidsKeyCache[kidId];
+    let info = kidsInfoCache[kidId];
+    if (!info) {
+        const res = await request<{
+            entries: VaultEntry[]; kid_salt: string; kid_id: number; parent_id: number;
+        }>(`/kids/accounts/${kidId}/vault`);
+        info = { kid_salt: res.kid_salt, kid_id: res.kid_id, parent_id: res.parent_id };
+        kidsInfoCache[kidId] = info;
+    }
+    const key = await deriveKidsKey(info.kid_id, info.parent_id, info.kid_salt);
+    kidsKeyCache[kidId] = key;
+    return key;
+}
+
 export const listKidsVault = async (kidId: number) => {
     const res = await request<{
         entries: VaultEntry[];
@@ -364,20 +383,15 @@ export const listKidsVault = async (kidId: number) => {
         kid_id: number;
         parent_id: number;
     }>(`/kids/accounts/${kidId}/vault`);
+    // Cache kid info from the response
+    kidsInfoCache[kidId] = { kid_salt: res.kid_salt, kid_id: res.kid_id, parent_id: res.parent_id };
     return res.entries;
 };
 
 export const createKidsVaultEntry = async (kidId: number, data: {
     title: string; username?: string; url?: string; password: string; notes?: string;
 }) => {
-    // First fetch kid info to derive key
-    const res = await request<{
-        entries: VaultEntry[];
-        kid_salt: string;
-        kid_id: number;
-        parent_id: number;
-    }>(`/kids/accounts/${kidId}/vault`);
-    const key = await deriveKidsKey(res.kid_id, res.parent_id, res.kid_salt);
+    const key = await getKidsKey(kidId);
     const { encrypted_password, iv } = await encryptPassword(data.password, key);
     return request<VaultEntry>(`/kids/accounts/${kidId}/vault`, {
         method: 'POST',
@@ -398,7 +412,8 @@ export const getKidsVaultEntry = async (kidId: number, entryId: number): Promise
         kid_id: number;
         parent_id: number;
     }>(`/kids/accounts/${kidId}/vault/${entryId}`);
-    const key = await deriveKidsKey(entry.kid_id, entry.parent_id, entry.kid_salt);
+    // Use cached key or derive once
+    const key = await getKidsKey(kidId);
     const password = await decryptPassword(entry.encrypted_password, entry.iv, key);
     return { ...entry, password };
 };
@@ -418,43 +433,45 @@ export const changePassword = async (currentPassword: string, newPassword: strin
     const entries = await request<VaultEntry[]>('/vault');
     const oldKey = getKey();
 
-    // 2. Re-encrypt each entry with new key (need new salt first)
-    // We'll compute the new salt client-side and send re-encrypted data
-    const reEncrypted: { id: number; encrypted_password: string; iv: string }[] = [];
-    for (const entry of entries) {
-        try {
-            const full = await request<VaultEntryEncrypted>(`/vault/${entry.id}`);
-            const plaintext = await decryptPassword(full.encrypted_password, full.iv, oldKey);
-            // Store temporarily — we'll re-encrypt after getting new salt from server
-            reEncrypted.push({ id: entry.id, encrypted_password: plaintext, iv: '' });
-        } catch {
-            // Skip entries that fail
+    // 2. Decrypt all entries in parallel batches (5 concurrent)
+    const BATCH = 5;
+    const decrypted: { id: number; plaintext: string }[] = [];
+    for (let i = 0; i < entries.length; i += BATCH) {
+        const batch = entries.slice(i, i + BATCH);
+        const results = await Promise.allSettled(
+            batch.map(async (entry) => {
+                const full = await request<VaultEntryEncrypted>(`/vault/${entry.id}`);
+                const pt = await decryptPassword(full.encrypted_password, full.iv, oldKey);
+                return { id: entry.id, plaintext: pt };
+            })
+        );
+        for (const r of results) {
+            if (r.status === 'fulfilled') decrypted.push(r.value);
         }
     }
 
-    // 3. Call server to change password (server returns new salt)
-    // First pass: send without re-encrypted entries to get new salt
+    // 3. Change password on server (returns new salt + token)
     const res = await request<{ message: string; token: string; salt: string }>('/profile/password', {
         method: 'PUT',
         body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     });
 
-    // 4. Derive new key and re-encrypt
+    // 4. Derive new key and re-encrypt all entries in parallel batches
     setToken(res.token);
     await setEncryptionKey(newPassword, res.salt);
     const newKey = getKey();
 
-    for (const entry of reEncrypted) {
-        try {
-            const { encrypted_password, iv } = await encryptPassword(entry.encrypted_password, newKey);
-            // Update each entry with new encryption
-            await request(`/vault/${entry.id}`, {
-                method: 'PUT',
-                body: JSON.stringify({ encrypted_password, iv }),
-            });
-        } catch {
-            // Skip entries that fail
-        }
+    for (let i = 0; i < decrypted.length; i += BATCH) {
+        const batch = decrypted.slice(i, i + BATCH);
+        await Promise.allSettled(
+            batch.map(async ({ id, plaintext }) => {
+                const { encrypted_password, iv } = await encryptPassword(plaintext, newKey);
+                await request(`/vault/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ encrypted_password, iv }),
+                });
+            })
+        );
     }
 
     return res;

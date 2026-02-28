@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { logout, getPendingInvitations } from '../api';
 import { useTheme } from '../ThemeContext';
@@ -24,14 +24,14 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
     const { lang, setLang, t } = useLanguage();
     const location = useLocation();
 
-    const navItems = [
+    const navItems = useMemo(() => [
         { to: '/vault', icon: Archive, label: t('nav.vault') },
         { to: '/generator', icon: KeyRound, label: t('nav.generator') },
         { to: '/checker', icon: ShieldCheck, label: t('nav.checker') },
         { to: '/groups', icon: Users, label: t('nav.groups'), badge: pendingCount },
-    ];
+    ], [t, pendingCount]);
 
-    // Fetch pending invitation count
+    // Fetch pending invitation count (visibility-aware, 60s interval)
     useEffect(() => {
         const fetchPending = async () => {
             try {
@@ -40,7 +40,9 @@ export default function Layout({ children, username, onLogout }: LayoutProps) {
             } catch { /* ignore */ }
         };
         fetchPending();
-        const interval = setInterval(fetchPending, 15000); // poll every 15s
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') fetchPending();
+        }, 60000);
         return () => clearInterval(interval);
     }, []);
 

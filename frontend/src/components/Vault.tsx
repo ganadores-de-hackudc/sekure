@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     listVault, getVaultEntry, deleteVaultEntry, toggleFavorite,
     listTags, createTag, deleteTag,
@@ -15,11 +15,14 @@ import {
     Globe, User, StickyNote, X, Filter, Share2, Pencil,
 } from 'lucide-react';
 
+const tagColors = ['#9b1b2f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
 export default function Vault() {
     const { t } = useLanguage();
     const [entries, setEntries] = useState<VaultEntry[]>([]);
     const [tags, setTags] = useState<Tag[]>([]);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filterTags, setFilterTags] = useState<string[]>([]);
     const [favoritesOnly, setFavoritesOnly] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -33,14 +36,19 @@ export default function Vault() {
     const [newTagColor, setNewTagColor] = useState('#9b1b2f');
     const [showFilters, setShowFilters] = useState(false);
     const [shareEntry, setShareEntry] = useState<VaultEntry | null>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-    const tagColors = ['#9b1b2f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+    // Debounce search input (300ms)
+    useEffect(() => {
+        debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300);
+        return () => clearTimeout(debounceRef.current);
+    }, [search]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [vaultData, tagsData] = await Promise.all([
-                listVault({ search, tags: filterTags, favorites_only: favoritesOnly }),
+                listVault({ search: debouncedSearch, tags: filterTags, favorites_only: favoritesOnly }),
                 listTags(),
             ]);
             setEntries(vaultData);
@@ -50,7 +58,7 @@ export default function Vault() {
         } finally {
             setLoading(false);
         }
-    }, [search, filterTags, favoritesOnly]);
+    }, [debouncedSearch, filterTags, favoritesOnly]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 

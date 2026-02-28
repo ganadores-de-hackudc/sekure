@@ -2,11 +2,14 @@
 Sekure - Secure Password Manager API (Multi-user)
 """
 import base64
+import hashlib
+import os
 import secrets
+from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Header, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import engine, get_db, Base
 from models import User, UserSession, Password, Tag, password_tags, Group, GroupMember, GroupPassword, GroupInvitation, SharedLink
@@ -23,7 +26,7 @@ from schemas import (
     CreateShareLink,
 )
 from crypto import (
-    generate_salt, derive_key, hash_master_password,
+    generate_salt, hash_master_password,
     verify_master_password,
 )
 from password_utils import (
@@ -35,14 +38,18 @@ from password_utils import (
 # --- DB-backed session helper ---
 def _load_session(token: str, db: Session) -> dict | None:
     """Load session from database, return dict with user_id, username or None."""
-    sess = db.query(UserSession).filter(UserSession.token == token).first()
+    sess = (
+        db.query(UserSession)
+        .options(joinedload(UserSession.user))
+        .filter(UserSession.token == token)
+        .first()
+    )
     if not sess:
         return None
-    user = db.query(User).filter(User.id == sess.user_id).first()
     return {
         "user_id": sess.user_id,
         "username": sess.username,
-        "is_kids_account": bool(user.is_kids_account) if user else False,
+        "is_kids_account": bool(sess.user.is_kids_account) if sess.user else False,
     }
 
 
@@ -127,8 +134,7 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
     # Generate recovery code (format: XXXX-XXXX-XXXX-XXXX-XXXX)
     raw_recovery = secrets.token_hex(10).upper()  # 20 hex chars
     recovery_code = "-".join([raw_recovery[i:i+4] for i in range(0, 20, 4)])
-    import hashlib as _hl
-    recovery_hash = _hl.sha256(recovery_code.encode()).hexdigest()
+    recovery_hash = hashlib.sha256(recovery_code.encode()).hexdigest()
 
     user = User(
         username=data.username.strip(),
@@ -137,18 +143,17 @@ def register_user(data: UserRegister, db: Session = Depends(get_db)):
         recovery_code_hash=recovery_hash,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.flush()
 
     token = secrets.token_urlsafe(32)
     sess = UserSession(
         token=token,
         user_id=user.id,
         username=user.username,
-        encryption_key="",  # No longer used — client derives key
     )
     db.add(sess)
     db.commit()
+    db.refresh(user)
 
     return {
         "token": token,
@@ -173,7 +178,6 @@ def login_user(data: UserLogin, db: Session = Depends(get_db)):
         token=token,
         user_id=user.id,
         username=user.username,
-        encryption_key="",  # No longer used — client derives key
     )
     db.add(sess)
     db.commit()
@@ -195,8 +199,7 @@ def recover_account(data: RecoverRequest, db: Session = Depends(get_db)):
     if not user or not user.recovery_code_hash:
         raise HTTPException(400, "Código de recuperación inválido.")
 
-    import hashlib as _hl
-    code_hash = _hl.sha256(data.recovery_code.strip().upper().encode()).hexdigest()
+    code_hash = hashlib.sha256(data.recovery_code.strip().upper().encode()).hexdigest()
     if code_hash != user.recovery_code_hash:
         raise HTTPException(400, "Código de recuperación inválido.")
 
@@ -211,14 +214,12 @@ def recover_account(data: RecoverRequest, db: Session = Depends(get_db)):
     # Generate new recovery code
     raw_recovery = secrets.token_hex(10).upper()
     new_recovery_code = "-".join([raw_recovery[i:i+4] for i in range(0, 20, 4)])
-    user.recovery_code_hash = _hl.sha256(new_recovery_code.encode()).hexdigest()
+    user.recovery_code_hash = hashlib.sha256(new_recovery_code.encode()).hexdigest()
 
     # Delete old vault (can't decrypt with new key)
     db.query(Password).filter(Password.user_id == user.id).delete()
     # Clear any existing sessions
     db.query(UserSession).filter(UserSession.user_id == user.id).delete()
-
-    db.commit()
 
     # Create new session
     token = secrets.token_urlsafe(32)
@@ -226,7 +227,6 @@ def recover_account(data: RecoverRequest, db: Session = Depends(get_db)):
         token=token,
         user_id=user.id,
         username=user.username,
-        encryption_key="",  # No longer used — client derives key
     )
     db.add(sess)
     db.commit()
@@ -533,7 +533,13 @@ def list_groups(session=Depends(get_current_session), db: Session = Depends(get_
     user_id = session["user_id"]
     memberships = db.query(GroupMember).filter(GroupMember.user_id == user_id).all()
     group_ids = [m.group_id for m in memberships]
-    groups = db.query(Group).filter(Group.id.in_(group_ids)).order_by(Group.created_at.desc()).all() if group_ids else []
+    groups = (
+        db.query(Group)
+        .options(joinedload(Group.owner), joinedload(Group.members).joinedload(GroupMember.user))
+        .filter(Group.id.in_(group_ids))
+        .order_by(Group.created_at.desc())
+        .all()
+    ) if group_ids else []
     return [_group_to_out(g) for g in groups]
 
 
@@ -553,14 +559,13 @@ def get_group_key(group_id: int, session=Depends(get_current_session), db: Sessi
 @app.post("/api/groups", response_model=GroupOut, status_code=201)
 def create_group(data: GroupCreate, session=Depends(get_current_session), db: Session = Depends(get_db)):
     """Create a new group. The creator becomes the owner and first member."""
-    import os as _os
     user_id = session["user_id"]
 
     if not data.name.strip():
         raise HTTPException(400, "El nombre del grupo no puede estar vacío.")
 
     # Generate a random encryption key for the group vault
-    group_key = _os.urandom(32)
+    group_key = os.urandom(32)
     group_key_b64 = base64.b64encode(group_key).decode("utf-8")
 
     group = Group(
@@ -586,10 +591,16 @@ def create_group(data: GroupCreate, session=Depends(get_current_session), db: Se
 def get_pending_invitations(session=Depends(get_current_session), db: Session = Depends(get_db)):
     """Get all pending invitations for the current user."""
     user_id = session["user_id"]
-    invitations = db.query(GroupInvitation).filter(
-        GroupInvitation.invitee_id == user_id,
-        GroupInvitation.status == "pending",
-    ).order_by(GroupInvitation.created_at.desc()).all()
+    invitations = (
+        db.query(GroupInvitation)
+        .options(joinedload(GroupInvitation.group), joinedload(GroupInvitation.inviter))
+        .filter(
+            GroupInvitation.invitee_id == user_id,
+            GroupInvitation.status == "pending",
+        )
+        .order_by(GroupInvitation.created_at.desc())
+        .all()
+    )
 
     return [
         GroupInvitationOut(
@@ -768,10 +779,15 @@ def list_group_invitations(group_id: int, session=Depends(get_current_session), 
     if group.owner_id != user_id:
         raise HTTPException(403, "Solo el creador puede ver las invitaciones.")
 
-    invitations = db.query(GroupInvitation).filter(
-        GroupInvitation.group_id == group_id,
-        GroupInvitation.status == "pending",
-    ).all()
+    invitations = (
+        db.query(GroupInvitation)
+        .options(joinedload(GroupInvitation.invitee))
+        .filter(
+            GroupInvitation.group_id == group_id,
+            GroupInvitation.status == "pending",
+        )
+        .all()
+    )
     return [
         {
             "id": inv.id,
@@ -817,7 +833,13 @@ def list_group_vault(group_id: int, session=Depends(get_current_session), db: Se
     if not is_member:
         raise HTTPException(403, "No eres miembro de este grupo.")
 
-    entries = db.query(GroupPassword).filter(GroupPassword.group_id == group_id).order_by(GroupPassword.updated_at.desc()).all()
+    entries = (
+        db.query(GroupPassword)
+        .options(joinedload(GroupPassword.added_by_user))
+        .filter(GroupPassword.group_id == group_id)
+        .order_by(GroupPassword.updated_at.desc())
+        .all()
+    )
     return [
         GroupPasswordOut(
             id=e.id,
@@ -981,60 +1003,6 @@ def delete_group_vault_entry(
     db.delete(entry)
     db.commit()
     return {"message": "Entrada eliminada."}
-
-
-@app.post("/api/groups/{group_id}/vault/import/{entry_id}", response_model=GroupPasswordOut, status_code=201)
-def import_vault_entry_to_group(
-    group_id: int,
-    entry_id: int,
-    session=Depends(get_current_session),
-    db: Session = Depends(get_db),
-):
-    """Import a personal vault entry into a group vault.
-    Client must provide re-encrypted data (encrypted with group key)."""
-    user_id = session["user_id"]
-
-    is_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == user_id).first()
-    if not is_member:
-        raise HTTPException(403, "No eres miembro de este grupo.")
-
-    # Get the personal vault entry (metadata only — password stays encrypted)
-    personal_entry = db.query(Password).filter(Password.id == entry_id, Password.user_id == user_id).first()
-    if not personal_entry:
-        raise HTTPException(404, "Entrada no encontrada en tu bóveda.")
-
-    # The import now just copies the encrypted data as-is.
-    # The frontend must handle re-encryption from user key -> group key before calling this.
-    # We accept the personal entry's encrypted data directly since the client
-    # will have already re-encrypted it via the frontend before making this call.
-    # NOTE: The frontend calls the new /api/groups/{gid}/vault endpoint with
-    # re-encrypted data instead of using this endpoint.
-    group_entry = GroupPassword(
-        group_id=group_id,
-        added_by=user_id,
-        title=personal_entry.title,
-        username=personal_entry.username,
-        url=personal_entry.url,
-        encrypted_password=personal_entry.encrypted_password,
-        iv=personal_entry.iv,
-        notes=personal_entry.notes,
-    )
-    db.add(group_entry)
-    db.commit()
-    db.refresh(group_entry)
-
-    return GroupPasswordOut(
-        id=group_entry.id,
-        group_id=group_entry.group_id,
-        title=group_entry.title,
-        username=group_entry.username,
-        url=group_entry.url,
-        notes=group_entry.notes,
-        added_by=group_entry.added_by,
-        added_by_username=group_entry.added_by_user.username,
-        created_at=group_entry.created_at,
-        updated_at=group_entry.updated_at,
-    )
 
 
 # ==================== SEKURE KIDS ====================
@@ -1309,7 +1277,6 @@ def change_password(data: ChangePassword, session=Depends(get_current_session), 
 
     # Clear all sessions (user will re-login)
     db.query(UserSession).filter(UserSession.user_id == user.id).delete()
-    db.commit()
 
     # Create new session
     token = secrets.token_urlsafe(32)
@@ -1317,7 +1284,6 @@ def change_password(data: ChangePassword, session=Depends(get_current_session), 
         token=token,
         user_id=user.id,
         username=user.username,
-        encryption_key="",
     )
     db.add(sess)
     db.commit()
@@ -1339,12 +1305,13 @@ def delete_account(data: DeleteAccount, session=Depends(get_current_session), db
     # Delete all related data
     db.query(Password).filter(Password.user_id == user.id).delete()
     db.query(UserSession).filter(UserSession.user_id == user.id).delete()
-    # Delete kids accounts too
+    # Delete kids accounts and their data in bulk
     kids = db.query(User).filter(User.parent_id == user.id).all()
-    for kid in kids:
-        db.query(Password).filter(Password.user_id == kid.id).delete()
-        db.query(UserSession).filter(UserSession.user_id == kid.id).delete()
-        db.delete(kid)
+    if kids:
+        kid_ids = [k.id for k in kids]
+        db.query(Password).filter(Password.user_id.in_(kid_ids)).delete(synchronize_session=False)
+        db.query(UserSession).filter(UserSession.user_id.in_(kid_ids)).delete(synchronize_session=False)
+        db.query(User).filter(User.id.in_(kid_ids)).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
     return {"message": "Cuenta eliminada."}
@@ -1359,8 +1326,6 @@ def create_share_link(
     db: Session = Depends(get_db),
 ):
     """Create a password share link. Frontend encrypts the data; we just store it."""
-    from datetime import timedelta, datetime, timezone
-
     durations = {
         "1h": timedelta(hours=1),
         "1d": timedelta(days=1),
@@ -1393,7 +1358,6 @@ def get_share_link(
     db: Session = Depends(get_db),
 ):
     """Retrieve a shared password. Validates expiry and access."""
-    from datetime import datetime, timezone
     link = db.query(SharedLink).filter(SharedLink.id == share_id).first()
     if not link:
         raise HTTPException(404, "Enlace no encontrado.")

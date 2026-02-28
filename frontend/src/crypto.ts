@@ -63,6 +63,9 @@ async function prefetchRandomOrgBytes(): Promise<void> {
 async function generateSecureIV(): Promise<Uint8Array<ArrayBuffer>> {
     const localIV = crypto.getRandomValues(new Uint8Array(IV_BYTES));
 
+    // Ensure random.org bytes are being fetched
+    ensurePrefetch();
+
     // Try to get random.org bytes (non-blocking: use cache or fetch)
     if (randomOrgCache.length === 0 && !randomOrgFetchPromise) {
         randomOrgFetchPromise = prefetchRandomOrgBytes().finally(() => { randomOrgFetchPromise = null; });
@@ -79,8 +82,14 @@ async function generateSecureIV(): Promise<Uint8Array<ArrayBuffer>> {
     return localIV as Uint8Array<ArrayBuffer>;
 }
 
-// Kick off background pre-fetch on module load
-prefetchRandomOrgBytes();
+// Lazy: pre-fetch called on first encryption, not on module load
+let _prefetchStarted = false;
+function ensurePrefetch() {
+    if (!_prefetchStarted) {
+        _prefetchStarted = true;
+        prefetchRandomOrgBytes();
+    }
+}
 
 
 // ─── Key Derivation ───────────────────────────────────
@@ -113,41 +122,6 @@ export async function deriveKey(masterPassword: string, saltB64: string): Promis
         true,   // extractable so we can export for storage
         ['encrypt', 'decrypt'],
     );
-}
-
-/**
- * Derive the verification hash (for auth — NOT the encryption key).
- * Uses the same salt + "_verify" suffix, matching the backend's
- * `hash_master_password()`.
- */
-export async function hashMasterPassword(masterPassword: string, saltB64: string): Promise<string> {
-    const salt = b64Decode(saltB64);
-    const verifySalt = new Uint8Array(salt.length + 7);
-    verifySalt.set(salt);
-    verifySalt.set(new TextEncoder().encode('_verify'), salt.length);
-
-    const enc = new TextEncoder();
-
-    const baseKey = await crypto.subtle.importKey(
-        'raw',
-        enc.encode(masterPassword),
-        'PBKDF2',
-        false,
-        ['deriveBits'],
-    );
-
-    const bits = await crypto.subtle.deriveBits(
-        {
-            name: 'PBKDF2',
-            salt: verifySalt,
-            iterations: ITERATIONS,
-            hash: 'SHA-256',
-        },
-        baseKey,
-        256,
-    );
-
-    return b64Encode(bits);
 }
 
 

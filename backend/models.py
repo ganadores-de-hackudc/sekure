@@ -22,7 +22,7 @@ class User(Base):
     recovery_code_hash = Column(String, nullable=True)  # hashed recovery code
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_kids_account = Column(Boolean, default=False)
-    parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
 
     passwords = relationship("Password", back_populates="user", cascade="all, delete-orphan")
     tags = relationship("Tag", back_populates="user", cascade="all, delete-orphan")
@@ -35,7 +35,7 @@ class Password(Base):
     __tablename__ = "passwords"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String, nullable=False)
     username = Column(String, default="")
     url = Column(String, default="")
@@ -54,7 +54,7 @@ class Tag(Base):
     __tablename__ = "tags"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, nullable=False)
     color = Column(String, default="#9b1b2f")
 
@@ -70,9 +70,8 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
 
     token = Column(String, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     username = Column(String, nullable=False)
-    encryption_key = Column(String, nullable=False)  # base64-encoded derived key
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
@@ -85,7 +84,7 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     encryption_key = Column(String, nullable=False)  # base64-encoded AES key for group vault
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -99,8 +98,8 @@ class GroupMember(Base):
     __tablename__ = "group_members"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
@@ -115,8 +114,8 @@ class GroupPassword(Base):
     __tablename__ = "group_passwords"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
-    added_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True)
+    added_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String, nullable=False)
     username = Column(String, default="")
     url = Column(String, default="")
@@ -134,9 +133,9 @@ class GroupInvitation(Base):
     __tablename__ = "group_invitations"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
-    inviter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    invitee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True)
+    inviter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    invitee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     status = Column(String, default="pending")  # pending, accepted, ignored
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -155,7 +154,7 @@ class SharedLink(Base):
     __tablename__ = "shared_links"
 
     id = Column(String, primary_key=True)  # UUID-style token
-    creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     encrypted_data = Column(Text, nullable=False)  # JSON blob encrypted with link key
     iv = Column(String, nullable=False)
     access_mode = Column(String, default="anyone")  # "anyone" or "specific"

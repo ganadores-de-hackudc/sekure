@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { generatePassword } from '../api';
 import type { GenerateRequest, GenerateResponse } from '../types';
 import { useLanguage } from '../i18n';
@@ -12,11 +12,11 @@ import {
 export default function Generator() {
     const { t } = useLanguage();
 
-    const methodOptions = [
+    const methodOptions = useMemo(() => [
         { value: 'random', label: t('gen.random'), icon: Shuffle, desc: t('gen.random_desc') },
         { value: 'passphrase', label: t('gen.passphrase'), icon: Type, desc: t('gen.passphrase_desc') },
         { value: 'pin', label: t('gen.pin'), icon: Hash, desc: t('gen.pin_desc') },
-    ];
+    ], [t]);
 
     const [config, setConfig] = useState<GenerateRequest>({
         length: 20,

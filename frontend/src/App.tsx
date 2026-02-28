@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { getAuthStatus, clearToken } from './api';
 import type { AuthStatus } from './types';
@@ -6,16 +6,26 @@ import { ThemeProvider } from './ThemeContext';
 import { LanguageProvider, useLanguage } from './i18n';
 import Layout from './components/Layout';
 import AuthScreen from './components/AuthScreen';
-import Generator from './components/Generator';
-import Checker from './components/Checker';
-import Vault from './components/Vault';
-import Groups from './components/Groups';
-import SekureKids from './components/SekureKids';
-import KidsLayout from './components/KidsLayout';
-import KidsVault from './components/KidsVault';
-import Profile from './components/Profile';
-import ShareReceive from './components/ShareReceive';
-import ExtensionDownload from './components/ExtensionDownload';
+
+// Lazy-loaded route components — only downloaded when visited
+const Generator = lazy(() => import('./components/Generator'));
+const Checker = lazy(() => import('./components/Checker'));
+const Vault = lazy(() => import('./components/Vault'));
+const Groups = lazy(() => import('./components/Groups'));
+const SekureKids = lazy(() => import('./components/SekureKids'));
+const KidsLayout = lazy(() => import('./components/KidsLayout'));
+const KidsVault = lazy(() => import('./components/KidsVault'));
+const Profile = lazy(() => import('./components/Profile'));
+const ShareReceive = lazy(() => import('./components/ShareReceive'));
+const ExtensionDownload = lazy(() => import('./components/ExtensionDownload'));
+
+function RouteFallback() {
+    return (
+        <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-3 border-sekure-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
+}
 
 function AppContent() {
     const [auth, setAuth] = useState<AuthStatus | null>(null);
@@ -60,9 +70,11 @@ function AppContent() {
     // Kids account: show colorful kids-only layout
     if (auth.user?.is_kids_account) {
         return (
-            <KidsLayout username={auth.user.username} onLogout={handleLogout}>
-                <KidsVault userId={auth.user.id} />
-            </KidsLayout>
+            <Suspense fallback={<RouteFallback />}>
+                <KidsLayout username={auth.user.username} onLogout={handleLogout}>
+                    <KidsVault userId={auth.user.id} />
+                </KidsLayout>
+            </Suspense>
         );
     }
 
@@ -73,18 +85,20 @@ function AppContent() {
     // Normal user: standard layout + kids route
     return (
         <Layout username={auth.user?.username ?? ''} onLogout={handleLogout}>
-            <Routes>
-                <Route path="/" element={<Navigate to="/vault" replace />} />
-                <Route path="/vault" element={<Vault />} />
-                <Route path="/generator" element={<Generator />} />
-                <Route path="/checker" element={<Checker />} />
-                <Route path="/groups" element={<Groups currentUserId={auth.user?.id ?? 0} />} />
-                <Route path="/kids" element={<SekureKids />} />
-                <Route path="/extension" element={<ExtensionDownload />} />
-                <Route path="/profile" element={<Profile username={auth.user?.username ?? ''} onLogout={handleLogout} onUsernameChanged={handleUsernameChanged} />} />
-                <Route path="/share/:shareId" element={<ShareReceive />} />
-                <Route path="*" element={<Navigate to="/vault" replace />} />
-            </Routes>
+            <Suspense fallback={<RouteFallback />}>
+                <Routes>
+                    <Route path="/" element={<Navigate to="/vault" replace />} />
+                    <Route path="/vault" element={<Vault />} />
+                    <Route path="/generator" element={<Generator />} />
+                    <Route path="/checker" element={<Checker />} />
+                    <Route path="/groups" element={<Groups currentUserId={auth.user?.id ?? 0} />} />
+                    <Route path="/kids" element={<SekureKids />} />
+                    <Route path="/extension" element={<ExtensionDownload />} />
+                    <Route path="/profile" element={<Profile username={auth.user?.username ?? ''} onLogout={handleLogout} onUsernameChanged={handleUsernameChanged} />} />
+                    <Route path="/share/:shareId" element={<ShareReceive />} />
+                    <Route path="*" element={<Navigate to="/vault" replace />} />
+                </Routes>
+            </Suspense>
         </Layout>
     );
 }

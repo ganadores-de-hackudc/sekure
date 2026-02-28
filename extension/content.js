@@ -140,15 +140,24 @@
     // ─── Password field detection ───
     function observePasswordFields() {
         // Process existing fields
-        document.querySelectorAll('input[type="password"]').forEach(attachToField);
+        document.querySelectorAll('input[type="password"]').forEach(f => {
+            attachToField(f);
+            trackField(f);
+        });
 
-        // Watch for dynamically added fields
+        // Single MutationObserver for both dropdown attachment and credential tracking
         const observer = new MutationObserver(mutations => {
             for (const m of mutations) {
                 for (const node of m.addedNodes) {
                     if (node.nodeType !== 1) continue;
-                    if (node.matches?.('input[type="password"]')) attachToField(node);
-                    node.querySelectorAll?.('input[type="password"]')?.forEach(attachToField);
+                    if (node.matches?.('input[type="password"]')) {
+                        attachToField(node);
+                        trackField(node);
+                    }
+                    node.querySelectorAll?.('input[type="password"]')?.forEach(f => {
+                        attachToField(f);
+                        trackField(f);
+                    });
                 }
             }
         });
@@ -175,6 +184,25 @@
         field.addEventListener('input', () => {
             updateStrengthBar(field.value);
         });
+    }
+
+    function trackField(field) {
+        if (field.__sekureTracked) return;
+        field.__sekureTracked = true;
+
+        field.addEventListener('input', () => {
+            trackedCredentials.password = field.value;
+            const form = field.closest('form');
+            const container = form || field.closest('div, section, main, article') || document.body;
+            const userField = findUsernameField(container, field);
+            if (userField?.value) {
+                trackedCredentials.username = userField.value;
+            }
+        }, true);
+
+        field.addEventListener('change', () => {
+            if (field.value) trackedCredentials.password = field.value;
+        }, true);
     }
 
     // ─── Autofill Dropdown ───
@@ -487,40 +515,8 @@
     }
 
     function trackCredentialInputs() {
-        // Attach input listeners to all current and future password fields
-        function trackField(field) {
-            if (field.__sekureTracked) return;
-            field.__sekureTracked = true;
-
-            field.addEventListener('input', () => {
-                trackedCredentials.password = field.value;
-                // Also grab the username at this moment
-                const form = field.closest('form');
-                const container = form || field.closest('div, section, main, article') || document.body;
-                const userField = findUsernameField(container, field);
-                if (userField?.value) {
-                    trackedCredentials.username = userField.value;
-                }
-            }, true);
-
-            // Also capture on blur/change in case input event is suppressed
-            field.addEventListener('change', () => {
-                if (field.value) trackedCredentials.password = field.value;
-            }, true);
-        }
-
-        document.querySelectorAll('input[type="password"]').forEach(trackField);
-
-        const observer = new MutationObserver(mutations => {
-            for (const m of mutations) {
-                for (const node of m.addedNodes) {
-                    if (node.nodeType !== 1) continue;
-                    if (node.matches?.('input[type="password"]')) trackField(node);
-                    node.querySelectorAll?.('input[type="password"]')?.forEach(trackField);
-                }
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
+        // trackField is called from the unified MutationObserver in observePasswordFields()
+        // No need for duplicate observer or querySelectorAll here
     }
 
     async function captureAndPersist() {

@@ -7,7 +7,6 @@ import math
 import hashlib
 import httpx
 import re
-from collections import Counter
 
 def generate_random_password(
     length: int = 20,
