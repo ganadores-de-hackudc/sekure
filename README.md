@@ -2,6 +2,9 @@
 
 **Sekure** es un gestor de contraseñas web y extensión de navegador con arquitectura zero-knowledge. El objetivo es que ningún secreto salga del dispositivo sin cifrar, mientras ofrecemos generación, verificación, bóveda personal y grupal, y control parental.
 
+## Ponlo a prueba!
+https://sekure-cq2t.vercel.app/
+
 ---
 
 ## Propósito y problema que resuelve
@@ -27,7 +30,7 @@ frontend/  React + Vite + TypeScript + Tailwind (SPA) + script para empaquetar e
 extension/ Chrome MV3 (background + content + popup) con cifrado local
 ```
 
-## Instalación
+## Instalación local
 Requisitos: Python 3.12+, Node.js 18+, [uv](https://docs.astral.sh/uv/) o pip, npm.
 
 Backend (API):
