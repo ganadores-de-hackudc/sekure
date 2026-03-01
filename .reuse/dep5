@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Sekure
+Upstream-Contact: Equipo mantenedor <maintainers@ganadores-hackudc.dev>
+Source: https://github.com/ganadores-de-hackudc/sekure
+
+Files: *
+Copyright: 2026 ganadores de hackudc
+License: MIT
